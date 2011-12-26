@@ -71,27 +71,39 @@ class FaultHandlerPlugin(object):
             self._current_timer.cancel()
 
     def dump_traceback(self, item, frame=None):
+        # XXX If SIGALRM is not available raising an exception in the
+        #     timer thread os not useful at all.
         sep = '\n' + '+' * 10 + ' faulthandler ' + '+' * 10 + '\n'
         sep2 = '\n' + '-' * 10 + ' %s ' + '-' * 10 + '\n'
+        if not self.exit:
+            if len(threading.enumerate()) > 1:
+                sys.stderr.write(sep)
+            for thread_id, frame in sys._current_frames().iteritems():
+                if thread_id == threading.current_thread().ident:
+                    continue
+                sys.stderr.write(sep2 % 'stack of thread %s' % thread_id)
+                traceback.print_stack(frame)
+            else:
+                if len(threading.enumerate()) > 1:
+                    sys.stderr.write(sep)
+            raise AssertionError('Faulthandler timeout >%ss' % self.timeout)
         sys.stderr.write(sep)
         capman = item.config.pluginmanager.getplugin('capturemanager')
-        if capman and self.exit:
+        if capman:
             stdout, stderr = capman.suspendcapture(item)
             if stdout:
                 sys.stderr.write(sep2 % 'stdout')
-                sys.stdout.write(stdout)
+                sys.stderr.write(stdout)
             if stderr:
                 sys.stderr.write(sep2 % 'stderr')
                 sys.stderr.write(stderr)
-        sys.stderr.write(sep2 % 'stack of main thread')
-        traceback.print_stack(frame)
-        for thread_id, frame in sys._current_frames().iteritems():
-            if thread_id == threading.current_thread().ident:
+        current_ident = threading.current_thread().ident
+        for thread_ident, frame in sys._current_frames().iteritems():
+            if thread_ident == current_ident:
                 continue
             sys.stderr.write(sep2 % 'stack of thread %s' % thread_id)
             traceback.print_stack(frame)
+        sys.stderr.write(sep2 % 'stack of main thread')
+        traceback.print_stack(frame)
         sys.stderr.write(sep)
-        if self.exit:
-            os._exit(1)
-        elif capman:
-            capman.resumecapture_item(item)
+        os._exit(1)
