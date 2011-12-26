@@ -5,10 +5,11 @@ tests which hang longer then expected.  Optionally it allows you to
 exit the process, though no cleanup will be performed in that case.
 """
 
-import faulthandler
 import os
+import signal
 import sys
 import threading
+import traceback
 
 
 def pytest_addoption(parser):
@@ -21,8 +22,8 @@ def pytest_addoption(parser):
                     help='Disable faulthandler usage')
     group.addoption('--faulthandler-timeout',
                     type=int,
-                    default=25,
-                    help='Timeout before dumping the traceback [25]')
+                    default=300,
+                    help='Timeout before dumping the traceback [300]')
     group.addoption('--faulthandler-exit',
                     action='store_true',
                     default=False,
@@ -42,34 +43,53 @@ class FaultHandlerPlugin(object):
     def __init__(self, config):
         self.timeout = config.getvalue('faulthandler_timeout')
         self.exit = config.getvalue('faulthandler_exit')
-        self._current_timer = None
+        if not hasattr(signal, 'alarm'):
+            self._current_timer = None
 
     def pytest_runtest_setup(self, item):
         """Setup up the faulthandler with a timeout"""
-        # faulthandler.dump_tracebacks_later(self.timeout, exit=self.exit)
-        timer = threading.Timer(self.timeout, self.dump_traceback, (item,))
-        self._current_timer = timer
-        timer.start()
+        if hasattr(signal, 'alarm'):
+
+            def handler(signum, frame):
+                assert signum == signal.SIGALRM
+                self.dump_traceback(item, frame)
+
+            signal.signal(signal.SIGALRM, handler)
+            signal.alarm(self.timeout)
+
+        else:
+            timer = threading.Timer(self.timeout, self.dump_traceback, (item,))
+            self._current_timer = timer
+            timer.start()
+
 
     def pytest_runtest_teardown(self):
         """Cancel the faulthandler timeout"""
-        # faulthandler.cancel_dump_tracebacks_later()
-        if self._current_timer:
+        if hasattr(signal, 'alarm'):
+            signal.alarm(0)
+        else:
             self._current_timer.cancel()
-            self._current_timer = None
 
-    def dump_traceback(self, item):
+    def dump_traceback(self, item, frame=None):
         sep = '\n' + '+' * 10 + ' faulthandler ' + '+' * 10 + '\n'
+        sep2 = '\n' + '-' * 10 + ' %s ' + '-' * 10 + '\n'
         sys.stderr.write(sep)
         capman = item.config.pluginmanager.getplugin('capturemanager')
         if capman and self.exit:
             stdout, stderr = capman.suspendcapture(item)
-            sys.stderr.write('\n' + '-' * 10 + ' stdout ' + '-' * 10 + '\n')
-            sys.stdout.write(stdout)
-            sys.stderr.write('\n' + '-' * 10 + ' stderr ' + '-' * 10 + '\n')
-            sys.stderr.write(stderr)
-            sys.stderr.write('\n' + '-' * 10 + ' threads ' + '-' * 10 + '\n')
-        faulthandler.dump_traceback()
+            if stdout:
+                sys.stderr.write(sep2 % 'stdout')
+                sys.stdout.write(stdout)
+            if stderr:
+                sys.stderr.write(sep2 % 'stderr')
+                sys.stderr.write(stderr)
+        sys.stderr.write(sep2 % 'stack of main thread')
+        traceback.print_stack(frame)
+        for thread_id, frame in sys._current_frames().iteritems():
+            if thread_id == threading.current_thread().ident:
+                continue
+            sys.stderr.write(sep2 % 'stack of thread %s' % thread_id)
+            traceback.print_stack(frame)
         sys.stderr.write(sep)
         if self.exit:
             os._exit(1)
