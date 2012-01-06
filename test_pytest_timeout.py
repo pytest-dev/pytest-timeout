@@ -32,7 +32,7 @@ def test_sigalrm(testdir):
      """)
     result = testdir.runpytest('--timeout=1')
     result.stdout.fnmatch_lines([
-            '*AssertionError*Timeout >1*'
+            '*Failed: Timeout >1s*'
             ])
 
 
