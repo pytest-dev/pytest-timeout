@@ -26,6 +26,10 @@ def pytest_addoption(parser):
                     type=int,
                     default=300,
                     help='Timeout before dumping the traceback [300]')
+    group.addoption('--nosigalrm',
+                    action='store_true',
+                    default=False,
+                    help='Do not use SIGALRM, use a Timer thread instead')
 
 
 def pytest_configure(config):
@@ -48,7 +52,7 @@ class FaultHandlerPlugin(object):
 
     def pytest_runtest_setup(self, item):
         """Setup up a timeout trigger and handler"""
-        if SIGALRM:
+        if SIGALRM and not self.config.getvalue('nosigalrm'):
 
             def handler(signum, frame):
                 __tracebackhide__ = True
@@ -107,17 +111,21 @@ class FaultHandlerPlugin(object):
                 sys.stderr.write(sep2 % 'stderr')
                 sys.stderr.write(stderr)
         self.dump_stacks()
-        sys.stderr.write(sep2 % 'stack of main thread')
-        traceback.print_stack(frame)
         sys.stderr.write(sep)
         os._exit(1)
 
     def dump_stacks(self):
         """Dump the stacks of all threads except the current thread"""
-        sep = '\n' + '-' * 10 + ' stack of thread %s ' + '-' * 10 + '\n'
+        sep = '\n' + '-' * 10 + ' stack of %s (%s) ' + '-' * 10 + '\n'
         current_ident = threading.current_thread().ident
         for thread_ident, frame in sys._current_frames().iteritems():
             if thread_ident == current_ident:
                 continue
-            sys.stderr.write(sep % thread_id)
+            for t in threading.enumerate():
+                if t.ident == thread_ident:
+                    thread_name = t.name
+                    break
+            else:
+                thread_name = '<unknown>'
+            sys.stderr.write(sep % (thread_name, thread_ident))
             traceback.print_stack(frame)
