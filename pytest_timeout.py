@@ -20,7 +20,7 @@ SIGALRM = getattr(signal, 'SIGALRM', None)
 
 
 def pytest_addoption(parser):
-    """Add options to control the faulthandler and it's timeout"""
+    """Add options to control the timeout plugin"""
     group = parser.getgroup('timeout', 'Dump stacks after timeout')
     group.addoption('--timeout',
                     type=int,
@@ -33,7 +33,7 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
-    """Activate faulthandler plugin if appropriate"""
+    """Activate timeout plugin if appropriate"""
     if config.getvalue('timeout') > 0:
         config.pluginmanager.register(FaultHandlerPlugin(config), 'timeout')
 
