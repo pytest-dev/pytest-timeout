@@ -13,6 +13,8 @@ import sys
 import threading
 import traceback
 
+import pytest
+
 
 SIGALRM = getattr(signal, 'SIGALRM', None)
 
@@ -36,15 +38,20 @@ class FaultHandlerPlugin(object):
     """The timeout plugin"""
 
     def __init__(self, config):
-        self.timeout = config.getvalue('timeout')
+        self.config = config
         if not SIGALRM:
             self._current_timer = None
+
+    @property
+    def timeout(self):
+        return self.config.getvalue('timeout')
 
     def pytest_runtest_setup(self, item):
         """Setup up a timeout trigger and handler"""
         if SIGALRM:
 
             def handler(signum, frame):
+                __tracebackhide__ = True
                 self.timeout_sigalrm(item, frame)
 
             signal.signal(signal.SIGALRM, handler)
@@ -71,6 +78,7 @@ class FaultHandlerPlugin(object):
         current to stderr and then raise an AssertionError, thus
         terminating the test.
         """
+        __tracebackhide__ = True
         sep = '\n' + '+' * 10 + ' timeout ' + '+' * 10 + '\n'
         nthreads = len(threading.enumerate())
         if nthreads > 1:
@@ -78,7 +86,7 @@ class FaultHandlerPlugin(object):
         self.dump_stacks()
         if nthreads > 1:
             sys.stderr.write(sep)
-        raise AssertionError('Timeout >%ss' % self.timeout)
+        pytest.fail('Timeout >%ss' % self.timeout)
 
     def timeout_thread(self, item, frame=None):
         """Dump stack of threads and call os._exit()
