@@ -19,7 +19,7 @@ SIGALRM = getattr(signal, 'SIGALRM', None)
 
 def pytest_addoption(parser):
     """Add options to control the faulthandler and it's timeout"""
-    group = parser.getgroup('faulthandler', 'Dump tracebacks after timeouts')
+    group = parser.getgroup('timeout', 'Dump stacks after timeout')
     group.addoption('--timeout',
                     type=int,
                     default=300,
