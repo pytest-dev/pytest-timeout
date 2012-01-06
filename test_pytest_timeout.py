@@ -18,12 +18,20 @@ os.environ['PYTHONPATH'] = os.path.dirname(__file__)
 have_sigalrm = pytest.mark.skipif('not hasattr(signal, "SIGALRM")')
 
 
+def pytest_funcarg__testdir(request):
+    """pytester testdir funcarg with pytest_timeout in the plugins
+
+    This has the effect of adding "-p pytest_timeout" to the py.test
+    call of .runpytest() which is required for the --timeout parameter
+    to work.
+    """
+    testdir = request.getfuncargvalue('testdir')
+    testdir.plugins.append('pytest_timeout')
+    return testdir
+
+
 @have_sigalrm
 def test_sigalrm(testdir):
-    # This inserts "-p pytest_timeout" to the py.test argument list.
-    # This must be availabe before the --timeout parameter can be
-    # used.  The alternative is to use pytest_plugins in conftest.py.
-    testdir.plugins.append('pytest_timeout')
     testdir.makepyfile("""
         import time
 
@@ -36,11 +44,17 @@ def test_sigalrm(testdir):
             ])
 
 
-# def test_thread():
-#     t = threading.Thread(target=time.sleep, args=(10,))
-#     t.daemon = True
-#     t.start()
-#     print 'foo'
-#     time.sleep(10)
-#     print 'bar'
-#     assert False
+def test_thread(testdir, monkeypatch):
+    testdir.makepyfile("""
+        import time
+
+        def test_foo():
+            time.sleep(2)
+    """)
+    result = testdir.runpytest('--timeout=1', '--nosigalrm')
+    result.stdout.fnmatch_lines([
+            '*++ timeout ++*',
+            '*-- stack of MainThread* --*',
+            '*File *, line *, in *',
+            '*++ timeout ++*',
+            ])
