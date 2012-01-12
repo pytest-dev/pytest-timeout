@@ -74,6 +74,8 @@ class FaultHandlerPlugin(object):
             signal.signal(signal.SIGALRM, signal.SIG_DFL)
         else:
             self._current_timer.cancel()
+            self._current_timer.join()
+            self._current_timer = None
 
     def timeout_sigalrm(self, item, frame=None):
         """Dump stack of threads and raise an exception

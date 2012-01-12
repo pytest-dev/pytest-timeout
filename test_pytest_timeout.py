@@ -52,7 +52,7 @@ def test_thread(testdir, monkeypatch):
             time.sleep(2)
     """)
     result = testdir.runpytest('--timeout=1', '--nosigalrm')
-    result.stdout.fnmatch_lines([
+    result.stderr.fnmatch_lines([
             '*++ timeout ++*',
             '*-- stack of MainThread* --*',
             '*File *, line *, in *',
