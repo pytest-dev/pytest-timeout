@@ -58,3 +58,4 @@ def test_thread(testdir, monkeypatch):
             '*File *, line *, in *',
             '*++ timeout ++*',
             ])
+    assert result.stderr.lines[-1] == '+' * 10 + ' timeout ' + '+' * 10
