@@ -43,8 +43,8 @@ class FaultHandlerPlugin(object):
 
     def __init__(self, config):
         self.config = config
-        if not SIGALRM:
-            self._current_timer = None
+        self._current_timer = None
+        self.cancel = None
 
     @property
     def timeout(self):
@@ -58,24 +58,33 @@ class FaultHandlerPlugin(object):
                 __tracebackhide__ = True
                 self.timeout_sigalrm(item, frame)
 
+            self.cancel = self.cancel_sigalrm
             signal.signal(signal.SIGALRM, handler)
             signal.alarm(self.timeout)
-
         else:
-            timer = threading.Timer(self.timeout, self.timeout_thread, (item,))
+            timer = threading.Timer(self.timeout, self.timeout_timer, (item,))
             self._current_timer = timer
+            self.cancel = self.cancel_timer
             timer.start()
-
 
     def pytest_runtest_teardown(self):
         """Cancel the timeout trigger"""
-        if SIGALRM:
-            signal.alarm(0)
-            signal.signal(signal.SIGALRM, signal.SIG_DFL)
-        else:
-            self._current_timer.cancel()
-            self._current_timer.join()
-            self._current_timer = None
+        # When skipping is raised from a pytest_runtest_setup function
+        # (as is the case when using the pytest.mark.skipif marker) we
+        # may be called without our setup counterpart having been
+        # called.  Hence the test for self.cancel.
+        if self.cancel:
+            self.cancel()
+            self.cancel = None
+
+    def cancel_sigalrm(self):
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, signal.SIG_DFL)
+
+    def cancel_timer(self):
+        self._current_timer.cancel()
+        self._current_timer.join()
+        self._current_timer = None
 
     def timeout_sigalrm(self, item, frame=None):
         """Dump stack of threads and raise an exception
@@ -94,11 +103,11 @@ class FaultHandlerPlugin(object):
             sys.stderr.write(sep)
         pytest.fail('Timeout >%ss' % self.timeout)
 
-    def timeout_thread(self, item, frame=None):
+    def timeout_timer(self, item, frame=None):
         """Dump stack of threads and call os._exit()
 
-        This disables the capture manager before dumping the stacks of
-        all threads.  After this os._exit(1) is called.
+        This disables the capturemanager and dumps stdout and stderr.
+        Then the stacks are dumped and os._exit(1) is called.
         """
         sep = '\n' + '+' * 10 + ' timeout ' + '+' * 10 + '\n'
         sep2 = '\n' + '-' * 10 + ' %s ' + '-' * 10 + '\n'
