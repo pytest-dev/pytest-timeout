@@ -13,6 +13,7 @@ import sys
 import threading
 import traceback
 
+import py
 import pytest
 
 
@@ -94,13 +95,12 @@ class FaultHandlerPlugin(object):
         terminating the test.
         """
         __tracebackhide__ = True
-        sep = '\n' + '+' * 10 + ' timeout ' + '+' * 10 + '\n'
         nthreads = len(threading.enumerate())
         if nthreads > 1:
-            sys.stderr.write(sep)
+            self.write_title('Timeout', sep='+')
         self.dump_stacks()
         if nthreads > 1:
-            sys.stderr.write(sep)
+            self.write_title('Timeout', sep='+')
         pytest.fail('Timeout >%ss' % self.timeout)
 
     def timeout_timer(self, item, frame=None):
@@ -109,25 +109,58 @@ class FaultHandlerPlugin(object):
         This disables the capturemanager and dumps stdout and stderr.
         Then the stacks are dumped and os._exit(1) is called.
         """
-        sep = '\n' + '+' * 10 + ' timeout ' + '+' * 10 + '\n'
-        sep2 = '\n' + '-' * 10 + ' %s ' + '-' * 10 + '\n'
-        sys.stderr.write(sep)
-        capman = item.config.pluginmanager.getplugin('capturemanager')
-        if capman:
-            stdout, stderr = capman.suspendcapture(item)
+        try:
+            capman = item.config.pluginmanager.getplugin('capturemanager')
+            if capman:
+                stdout, stderr = capman.suspendcapture(item)
+            else:
+                stdout, stderr = None
+            self.write_title('Timeout', sep='+')
+            caplog = item.config.pluginmanager.getplugin('_capturelog')
+            if caplog and hasattr(item, 'capturelog_handler'):
+                log = item.capturelog_handler.stream.getvalue()
+                if log:
+                    self.write_title('Captured log')
+                    self.write(log)
             if stdout:
-                sys.stderr.write(sep2 % 'stdout')
-                sys.stderr.write(stdout)
+                self.write_title('Captured stdout')
+                self.write(stdout)
             if stderr:
-                sys.stderr.write(sep2 % 'stderr')
-                sys.stderr.write(stderr)
-        self.dump_stacks()
-        sys.stderr.write(sep)
-        os._exit(1)
+                self.write_title('Captured stderr')
+                self.write(stderr)
+            self.dump_stacks()
+            self.write_title('Timeout', sep='+')
+        except Exception:
+            traceback.print_exc()
+        finally:
+            os._exit(1)
+
+    def write_title(self, title, stream=None, sep='~'):
+        """Write a section title
+
+        If *stream* is None sys.stderr will be used, *sep* is used to
+        draw the line.
+        """
+        if stream is None:
+            stream = sys.stderr
+        width = py.io.get_terminal_width()
+        fill = int((width - len(title) - 2) / 2)
+        line = ' '.join([sep * fill, title, sep * fill])
+        if len(line) < width:
+            line += sep * (width - len(line))
+        stream.write('\n' + line + '\n')
+
+    def write(self, text, stream=None):
+        """Write text to stream
+
+        Pretty stupid really, only here for symetry with .write_title().
+        """
+        if stream is None:
+            stream = sys.stderr
+        stream.write(text)
 
     def dump_stacks(self):
         """Dump the stacks of all threads except the current thread"""
-        sep = '\n' + '-' * 10 + ' stack of %s (%s) ' + '-' * 10 + '\n'
         current_ident = threading.current_thread().ident
         for thread_ident, frame in sys._current_frames().iteritems():
             if thread_ident == current_ident:
@@ -138,5 +171,5 @@ class FaultHandlerPlugin(object):
                     break
             else:
                 thread_name = '<unknown>'
-            sys.stderr.write(sep % (thread_name, thread_ident))
-            traceback.print_stack(frame)
+            self.write_title('Stack of %s (%s)' % (thread_name, thread_ident))
+            self.write(''.join(traceback.format_stack(frame)))

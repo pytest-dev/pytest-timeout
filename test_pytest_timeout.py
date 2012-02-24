@@ -53,9 +53,9 @@ def test_thread(testdir, monkeypatch):
     """)
     result = testdir.runpytest('--timeout=1', '--nosigalrm')
     result.stderr.fnmatch_lines([
-            '*++ timeout ++*',
-            '*-- stack of MainThread* --*',
+            '*++ Timeout ++*',
+            '*~~ Stack of MainThread* ~~*',
             '*File *, line *, in *',
-            '*++ timeout ++*',
+            '*++ Timeout ++*',
             ])
-    assert result.stderr.lines[-1] == '+' * 10 + ' timeout ' + '+' * 10
+    assert '++ Timeout ++' in result.stderr.lines[-1]
