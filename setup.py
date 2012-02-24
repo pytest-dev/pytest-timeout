@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(name='pytest-timeout',
       description='pytest plugin to abort tests after a timeout',
-      long_description=open("README.rst").read(),
+      long_description=open("README").read(),
       version='0.1',
       author='Floris Bruynooghe',
       author_email='flub@devork.be',
