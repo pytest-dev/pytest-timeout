@@ -36,10 +36,10 @@ def pytest_addoption(parser):
 def pytest_configure(config):
     """Activate timeout plugin if appropriate"""
     if config.getvalue('timeout') > 0:
-        config.pluginmanager.register(FaultHandlerPlugin(config), 'timeout')
+        config.pluginmanager.register(TimeoutPlugin(config), 'timeout')
 
 
-class FaultHandlerPlugin(object):
+class TimeoutPlugin(object):
     """The timeout plugin"""
 
     def __init__(self, config):
