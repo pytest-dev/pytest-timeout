@@ -44,7 +44,7 @@ def test_sigalrm(testdir):
             ])
 
 
-def test_thread(testdir, monkeypatch):
+def test_thread(testdir):
     testdir.makepyfile("""
         import time
 
@@ -59,3 +59,28 @@ def test_thread(testdir, monkeypatch):
             '*++ Timeout ++*',
             ])
     assert '++ Timeout ++' in result.stderr.lines[-1]
+
+
+@have_sigalrm
+def test_timeout_mark_sigalrm(testdir):
+    testdir.makepyfile("""
+        import time, pytest
+
+        @pytest.mark.timeout(1)
+        def test_foo():
+            time.sleep(2)
+    """)
+    result = testdir.runpytest()
+    result.stdout.fnmatch_lines(['*Failed: Timeout >1s*'])
+
+
+def test_timeout_mark_timer(testdir):
+    testdir.makepyfile("""
+        import time, pytest
+
+        @pytest.mark.timeout(1)
+        def test_foo():
+            time.sleep(2)
+    """)
+    result = testdir.runpytest('--nosigalrm')
+    result.stderr.fnmatch_lines(['*++ Timeout ++*'])

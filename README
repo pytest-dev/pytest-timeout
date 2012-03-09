@@ -48,3 +48,13 @@ will need to use the `--nosigalrm` option.  The limitation of the
 timer thread however is the extra overhead of creating a thread for
 each executed test and the fact that after one timeout the entire
 process is stopped and no further tests are executed.
+
+
+Changelog
+---------
+
+New in 0.2
+^^^^^^^^^^
+
+* Add a marker to modify the timeout delay using a @pytest.timeout(N)
+  syntax.

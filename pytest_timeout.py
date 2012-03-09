@@ -53,17 +53,31 @@ class TimeoutPlugin(object):
 
     def pytest_runtest_setup(self, item):
         """Setup up a timeout trigger and handler"""
+        timeout = self.timeout
+        if 'timeout' in item.keywords:
+            marker = item.keywords['timeout']
+            if len(marker.args) != 1:
+                raise TypeError('Timeout marker must have exactly 1 argument')
+            if marker.kwargs:
+                # XXX Add sigalrm=bool keyword
+                raise TypeError('Timeout takes no keyword arguments')
+            try:
+                timeout = int(marker.args[0])
+            except ValueError:
+                raise ValueError('Timeout marker must have integer argument')
+
         if SIGALRM and not self.config.getvalue('nosigalrm'):
 
             def handler(signum, frame):
                 __tracebackhide__ = True
-                self.timeout_sigalrm(item, frame)
+                self.timeout_sigalrm(item, timeout)
 
             self.cancel = self.cancel_sigalrm
             signal.signal(signal.SIGALRM, handler)
-            signal.alarm(self.timeout)
+            signal.alarm(timeout)
         else:
-            timer = threading.Timer(self.timeout, self.timeout_timer, (item,))
+            timer = threading.Timer(timeout,
+                                    self.timeout_timer, (item, timeout))
             self._current_timer = timer
             self.cancel = self.cancel_timer
             timer.start()
@@ -87,7 +101,7 @@ class TimeoutPlugin(object):
         self._current_timer.join()
         self._current_timer = None
 
-    def timeout_sigalrm(self, item, frame=None):
+    def timeout_sigalrm(self, item, timeout):
         """Dump stack of threads and raise an exception
 
         This will output the stacks of any threads other then the
@@ -101,9 +115,9 @@ class TimeoutPlugin(object):
         self.dump_stacks()
         if nthreads > 1:
             self.write_title('Timeout', sep='+')
-        pytest.fail('Timeout >%ss' % self.timeout)
+        pytest.fail('Timeout >%ss' % timeout)
 
-    def timeout_timer(self, item, frame=None):
+    def timeout_timer(self, item, timeout):
         """Dump stack of threads and call os._exit()
 
         This disables the capturemanager and dumps stdout and stderr.
