@@ -84,3 +84,39 @@ def test_timeout_mark_timer(testdir):
     """)
     result = testdir.runpytest('--nosigalrm')
     result.stderr.fnmatch_lines(['*++ Timeout ++*'])
+
+
+def test_timeout_mark_nonint(testdir):
+    testdir.makepyfile("""
+        import pytest
+
+        @pytest.mark.timeout('foo')
+        def test_foo():
+            pass
+   """)
+    result = testdir.runpytest()
+    result.stdout.fnmatch_lines(['*ValueError*'])
+
+
+def test_timeout_mark_args(testdir):
+    testdir.makepyfile("""
+        import pytest
+
+        @pytest.mark.timeout(1, 2)
+        def test_foo():
+            pass
+    """)
+    result = testdir.runpytest()
+    result.stdout.fnmatch_lines(['*TypeError*'])
+
+
+def test_timeout_mark_noargs(testdir):
+    testdir.makepyfile("""
+        import pytest
+
+        @pytest.mark.timeout
+        def test_foo():
+            pass
+    """)
+    result = testdir.runpytest()
+    result.stdout.fnmatch_lines(['*TypeError*'])
