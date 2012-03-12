@@ -57,4 +57,4 @@ New in 0.2
 ^^^^^^^^^^
 
 * Add a marker to modify the timeout delay using a @pytest.timeout(N)
-  syntax.
+  syntax, thanks to Laurant Brack for the initial code.
