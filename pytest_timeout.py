@@ -18,24 +18,37 @@ import pytest
 
 
 SIGALRM = getattr(signal, 'SIGALRM', None)
+TIMEOUT_DESC = """
+Timeout in seconds before dumping the stacks.  Default is 0 which
+means no timeout.
+""".strip()
+METHOD_DESC = """
+Timeout mechanism to use.  'signal' uses SIGALRM if available,
+'thread' uses a timer thread.  The default is to use 'signal' and fall
+back to 'thread'.
+""".strip()
 
 
 def pytest_addoption(parser):
     """Add options to control the timeout plugin"""
-    group = parser.getgroup('timeout', 'Dump stacks after timeout')
+    group = parser.getgroup(
+        'timeout', 'Interrupt test run and dump stacks of all threads after '
+        'a test times out')
     group.addoption('--timeout',
-                    type=int,
-                    default=300,
-                    help='Timeout before dumping the traceback [300]')
-    group.addoption('--nosigalrm',
-                    action='store_true',
-                    default=False,
-                    help='Do not use SIGALRM, use a Timer thread instead')
+                    type='int',
+                    help=TIMEOUT_DESC)
+    group.addoption('--timeout_method',
+                    type='choice',
+                    action='store',
+                    choices=['signal', 'thread'],
+                    help=METHOD_DESC)
+    parser.addini('timeout', TIMEOUT_DESC)
+    parser.addini('timeout_method', METHOD_DESC)
 
 
 def pytest_configure(config):
     """Activate timeout plugin if appropriate"""
-    if config.getvalue('timeout') > 0:
+    if config.getvalue('timeout') is not None or config.getini('timeout'):
         config.pluginmanager.register(TimeoutPlugin(config), 'timeout')
 
 
@@ -47,26 +60,66 @@ class TimeoutPlugin(object):
         self._current_timer = None
         self.cancel = None
 
-    @property
-    def timeout(self):
-        return self.config.getvalue('timeout')
+    def timeout(self, item):
+        """Return the timeout for an item"""
+        if 'timeout' in item.keywords:
+            try:
+                return int(item.keywords['timeout'].args[0])
+            except KeyError:
+                pass
+            except ValueError:
+                raise ValueError('Timeout marker must have integer argument')
+        opt = item.config.getvalue('timeout')
+        if opt is not None:
+            return opt
+        ini = item.config.getini('timeout')
+        if ini:
+            try:
+                return int(ini)
+            except ValueError:
+                raise ValueError('Invalid timeout in ini config: %s' % ini)
+        return 0
+
+    def method(self, item):
+        """Return the timeout method to be used for an item"""
+        if 'timeout' in item.keywords:
+            try:
+                method = item.keywords['timeout'].kwargs['method']
+            except KeyError:
+                pass
+            else:
+                return self._validate_method(method, 'marker')
+        cmdl = item.config.getvalue('timeout_method')
+        if cmdl is not None:
+            return self._validate_method(cmdl, 'command line')
+        ini = item.config.getini('timeout_method')
+        if ini:
+            return self._validate_method(ini, 'configuration file')
+        if SIGALRM:
+            return 'signal'
+        else:
+            return 'thread'
+
+    def _validate_method(self, method, where):
+        if method not in ['signal', 'thread']:
+            raise ValueError('Invalid method %s from %s' % (method, where))
+        return method
 
     def pytest_runtest_setup(self, item):
         """Setup up a timeout trigger and handler"""
-        timeout = self.timeout
         if 'timeout' in item.keywords:
             marker = item.keywords['timeout']
             if len(marker.args) != 1:
                 raise TypeError('Timeout marker must have exactly 1 argument')
-            if marker.kwargs:
-                # XXX Add sigalrm=bool keyword
-                raise TypeError('Timeout takes no keyword arguments')
-            try:
-                timeout = int(marker.args[0])
-            except ValueError:
-                raise ValueError('Timeout marker must have integer argument')
+            if marker.kwargs and list(marker.kwargs.keys()) != ['method']:
+                raise TypeError(
+                    'Timeout marker only takes the "method" keyword argument')
 
-        if SIGALRM and not self.config.getvalue('nosigalrm'):
+        timeout = self.timeout(item)
+        if timeout <= 0:
+            return
+        method = self.method(item)
+        if method == 'signal':
 
             def handler(signum, frame):
                 __tracebackhide__ = True
@@ -75,7 +128,7 @@ class TimeoutPlugin(object):
             self.cancel = self.cancel_sigalrm
             signal.signal(signal.SIGALRM, handler)
             signal.alarm(timeout)
-        else:
+        elif method == 'thread':
             timer = threading.Timer(timeout,
                                     self.timeout_timer, (item, timeout))
             self._current_timer = timer

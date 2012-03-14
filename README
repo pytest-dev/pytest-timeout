@@ -10,41 +10,73 @@ integration (CI) server.
 Usage
 -----
 
-Install via::
+Install is as simple as e.g.::
 
    pip install pytest-timeout
 
-and then enable the plugin, either from the command line::
+By default the plugin will not time out any tests, to enable timeouts
+you need to set a timeout using either the command line option
+``--timeout=N`` or using the likewise named configuration option in
+e.g. pytest.ini (see py.test docs for other files considered as
+configuration files)::
 
-   py.test -p timeout
+   [pytest]
+   timeout = N
 
-or more conveniently from within the test module or conftest.py::
+In both cases *N* is an integer number indicating the number of
+seconds before a timeout will occur.  Using a timeout of ``0`` will
+result in no timeout, but will enable the plugin so you can use the
+marker (see below).
 
-   pytest_plugins = 'timeout'
+Furthermore it is possible to change the default timeout method used
+by the plugin using ``timeout_method`` as either a long option
+(prefixed with ``--``) or in the configuration file.  Valid values are
+"signal" and "thread", details of their behaviour and implications can
+be found below in the "How it Works" section.  Normally there is no
+need to worry about this however as the default will be fine.
 
+When the plugin is enabled by the command line option or configuration
+file item you can control it's behaviour on a per-test level using the
+*timeout* marker, e.g.::
 
-You can change the timeout using the `--timeout` parameter which sets
-the timeout in seconds.
+   @pytest.mark.timeout(5)
+   def test_foo():
+       pass
+
+will set the timeout to 5 seconds for the test.  The marker can also
+specify the method used for a test using the ``method`` keyword::
+
+   @pytest.mark.timeout(method='thread')
+   def test_foo():
+       pass
+
+This can be useful if you have a particular test who's code does
+conflict with the use of SIGALRM by this plugin.  You can of course
+modify both the timeout and marker at the same time::
+
+   @pytest.mark.timeout(5, method='signal')
+   def test_foo():
+       pass
 
 
 How It Works
 ------------
 
 This plugin works in one of two ways.  If the system supports the
-SIGALRM signal an alarm will be scheduled when the tests starts and
+SIGALRM signal an alarm will be scheduled when a test starts and
 cancelled when it finishes.  If the alarm expires during the test the
 signal handler will use `pytest.fail()` to interrupt the test after
 having dumped the stack of any other threads running to stderr.
 
-If the system does not support SIGALRM or the `--nosigalrm` option was
-used then a timer thread will be used instead.  Once more, if this
-timer is not cancelled before it expires it will dump the stack of all
-threads to stderr before terminating the entire py.test process using
-os._exit(1).
+If the system does not support SIGALRM or the "thread" timeout method
+was selected then a timer thread will be used instead.  Once more, if
+this timer is not cancelled before it expires it will dump the stack
+of all threads to stderr before terminating the entire py.test process
+using os._exit(1).
 
 The downside of the SIGALRM method is that the signal is used by the
 test framework.  If this signal is used by the code under test you
-will need to use the `--nosigalrm` option.  The limitation of the
+will need to use the "thread" timeout method.  The limitation of the
 timer thread however is the extra overhead of creating a thread for
 each executed test and the fact that after one timeout the entire
 process is stopped and no further tests are executed.
@@ -53,8 +85,20 @@ process is stopped and no further tests are executed.
 Changelog
 ---------
 
-New in 0.2
-^^^^^^^^^^
+0.2
+~~~
 
 * Add a marker to modify the timeout delay using a @pytest.timeout(N)
   syntax, thanks to Laurant Brack for the initial code.
+
+* Allow the timeout marker to select the timeout method using the
+  ``method`` keyword argument.
+
+* Rename the --nosigalrm option to --method=thread to future proof
+  support for eventlet and gevent.  Thanks to Ronny Pfannschmidt for
+  the hint.
+
+* Add ``timeout`` and ``timeout_method`` items to the configuration
+  file so you can enable and configure the plugin using the ini file.
+  Thanks to Holger Krekel and Ronny Pfannschmidt for the hints.
+

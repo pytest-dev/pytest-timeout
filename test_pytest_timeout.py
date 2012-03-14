@@ -51,7 +51,7 @@ def test_thread(testdir):
         def test_foo():
             time.sleep(2)
     """)
-    result = testdir.runpytest('--timeout=1', '--nosigalrm')
+    result = testdir.runpytest('--timeout=1', '--timeout_method=thread')
     result.stderr.fnmatch_lines([
             '*++ Timeout ++*',
             '*~~ Stack of MainThread* ~~*',
@@ -69,8 +69,9 @@ def test_timeout_mark_sigalrm(testdir):
         @pytest.mark.timeout(1)
         def test_foo():
             time.sleep(2)
+            assert False
     """)
-    result = testdir.runpytest()
+    result = testdir.runpytest('--timeout=0')
     result.stdout.fnmatch_lines(['*Failed: Timeout >1s*'])
 
 
@@ -82,7 +83,7 @@ def test_timeout_mark_timer(testdir):
         def test_foo():
             time.sleep(2)
     """)
-    result = testdir.runpytest('--nosigalrm')
+    result = testdir.runpytest('--timeout=0', '--timeout_method=thread')
     result.stderr.fnmatch_lines(['*++ Timeout ++*'])
 
 
@@ -94,7 +95,7 @@ def test_timeout_mark_nonint(testdir):
         def test_foo():
             pass
    """)
-    result = testdir.runpytest()
+    result = testdir.runpytest('--timeout=0')
     result.stdout.fnmatch_lines(['*ValueError*'])
 
 
@@ -106,7 +107,7 @@ def test_timeout_mark_args(testdir):
         def test_foo():
             pass
     """)
-    result = testdir.runpytest()
+    result = testdir.runpytest('--timeout=0')
     result.stdout.fnmatch_lines(['*TypeError*'])
 
 
@@ -118,5 +119,36 @@ def test_timeout_mark_noargs(testdir):
         def test_foo():
             pass
     """)
-    result = testdir.runpytest()
+    result = testdir.runpytest('--timeout=0')
     result.stdout.fnmatch_lines(['*TypeError*'])
+
+
+def test_ini_timeout(testdir):
+    testdir.makepyfile("""
+        import time
+
+        def test_foo():
+            time.sleep(2)
+    """)
+    testdir.makeini("""
+        [pytest]
+        timeout = 1
+    """)
+    result = testdir.runpytest()
+    assert result.ret
+
+
+def test_ini_method(testdir):
+    testdir.makepyfile("""
+        import time
+
+        def test_foo():
+            time.sleep(2)
+    """)
+    testdir.makeini("""
+        [pytest]
+        timeout = 1
+        timeout_method = thread
+    """)
+    result = testdir.runpytest()
+    assert '=== 1 failed in ' not in result.outlines[-1]
