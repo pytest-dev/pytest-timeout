@@ -1,24 +1,34 @@
 """Demonstration of timeout failures using pytest_timeout
 
-To use this demo, invoke as::
+To use this demo, invoke py.test on it::
 
-   py.test -p pytest_timeout --timeout=1 failure_demo.py
+   py.test failure_demo.py
 
-since with the default timeout the tests will pass.
+Since the current directory has a pytest.ini file which activates the
+plugin this will work correctly.
 """
 
-import signal
+import threading
 import time
 
 import pytest
 
 
-pytest_plugins = 'pytest_timeout'
+def sleep(s):
+    time.sleep(s)
 
 
-have_sigalrm = pytest.mark.skipif('not hasattr(signal, "SIGALRM")')
+@pytest.mark.timeout(1)
+def test_simple():
+    sleep(2)
 
 
-@have_sigalrm
-def test_sigalrm():
-    time.sleep(2)
+def run():
+    sleep(2)
+
+
+@pytest.mark.timeout(1)
+def test_thread():
+    t = threading.Thread(target=run)
+    t.start()
+    sleep(2)
