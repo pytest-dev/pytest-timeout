@@ -3,31 +3,47 @@ import os.path
 import signal
 import threading
 
+import pkg_resources
 import pytest
 
 
 pytest_plugins = 'pytester'
 
 
-# This is required since our tests run py.test in a temporary
-# directory and that py.test process needs to find the pytest_timeout
-# module on it's sys.path.
-os.environ['PYTHONPATH'] = os.path.dirname(__file__)
+def pytest_funcarg__testdir(request):
+    """Horible hack around setuptools' behaviour
+
+    The simple solution would be to require to be installed
+    (setuptools' develop mode would suffice).  However to make the
+    test also run from a plain checkout we need to ensure the plugin
+    is loaded by ensuring it is on sys.path and adding -p to the
+    pytest commandline.  But we also want to run the tests without
+    being installed but with an .egg-info directory present in the
+    checkout.  In this scenario adding this directory on sys.path will
+    make the entrypoint show up so we should no longer add -p to
+    py.test.
+    """
+    testdir = request.getfuncargvalue('testdir')
+
+    def run_entrypoing_test():
+        test_script = testdir.makepyfile(entrypoint_check="""
+            import sys, pkg_resources
+            if 'timeout' in [ep.name for ep in
+                             pkg_resources.iter_entry_points('pytest11')]:
+                sys.exit(1)
+            """)
+        return testdir.runpython(test_script)
+
+    runresult = request.cached_setup(setup=run_entrypoing_test)
+    if not runresult.ret:
+        os.environ['PYTHONPATH'] = os.path.dirname(__file__)
+        if not os.path.isdir(os.path.join(os.path.dirname(__file__),
+                                          'pytest_timeout.egg-info')):
+            testdir.plugins.append('pytest_timeout')
+    return testdir
 
 
 have_sigalrm = pytest.mark.skipif('not hasattr(signal, "SIGALRM")')
-
-
-def pytest_funcarg__testdir(request):
-    """pytester testdir funcarg with pytest_timeout in the plugins
-
-    This has the effect of adding "-p pytest_timeout" to the py.test
-    call of .runpytest() which is required for the --timeout parameter
-    to work.
-    """
-    testdir = request.getfuncargvalue('testdir')
-    testdir.plugins.append('pytest_timeout')
-    return testdir
 
 
 @have_sigalrm
