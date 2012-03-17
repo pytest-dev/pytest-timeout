@@ -204,6 +204,8 @@ class TimeoutPlugin(object):
         except Exception:
             traceback.print_exc()
         finally:
+            sys.stdout.flush()
+            sys.stderr.flush()
             os._exit(1)
 
     def write_title(self, title, stream=None, sep='~'):
@@ -233,7 +235,7 @@ class TimeoutPlugin(object):
     def dump_stacks(self):
         """Dump the stacks of all threads except the current thread"""
         current_ident = threading.current_thread().ident
-        for thread_ident, frame in sys._current_frames().iteritems():
+        for thread_ident, frame in sys._current_frames().items():
             if thread_ident == current_ident:
                 continue
             for t in threading.enumerate():

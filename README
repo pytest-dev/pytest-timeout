@@ -102,3 +102,4 @@ Changelog
   file so you can enable and configure the plugin using the ini file.
   Thanks to Holger Krekel and Ronny Pfannschmidt for the hints.
 
+* Tested (and fixed) for python 2.6, 2.7 and 3.2.
