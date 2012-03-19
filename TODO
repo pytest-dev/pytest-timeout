@@ -1,18 +1,5 @@
 TODO
 ====
 
-* Add proper tests
-
-* Consider adding a funcarg which allows you to manipulate the
-  timeout.
-
-* Consider adding a mark which allows you to specify a timeout using a
-  decorator in the same way as pytest.mark.skipif().
-
-* If SIGALRM is used and the code under test can not be interrupted
-  using an AsserionError then this fails to work.  So maybe consider a
-  funcarg/mark to select whether SIGALRM or a Timer is used.  Or
-  enable os._exit(1) for SIGALRM as well.
-
-* Consider checking for an existing signal handler.  If it exists
-  maybe fall back to the threading based solution.
+* Consider checking for an existing signal handler
+   If it exists maybe fall back to the threading based solution.
