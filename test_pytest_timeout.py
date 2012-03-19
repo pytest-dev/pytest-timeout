@@ -87,7 +87,7 @@ def test_timeout_mark_sigalrm(testdir):
             time.sleep(2)
             assert False
     """)
-    result = testdir.runpytest('--timeout=0')
+    result = testdir.runpytest()
     result.stdout.fnmatch_lines(['*Failed: Timeout >1s*'])
 
 
@@ -99,7 +99,7 @@ def test_timeout_mark_timer(testdir):
         def test_foo():
             time.sleep(2)
     """)
-    result = testdir.runpytest('--timeout=0', '--timeout_method=thread')
+    result = testdir.runpytest('--timeout_method=thread')
     result.stderr.fnmatch_lines(['*++ Timeout ++*'])
 
 
@@ -111,7 +111,7 @@ def test_timeout_mark_nonint(testdir):
         def test_foo():
             pass
    """)
-    result = testdir.runpytest('--timeout=0')
+    result = testdir.runpytest()
     result.stdout.fnmatch_lines(['*ValueError*'])
 
 
@@ -123,7 +123,7 @@ def test_timeout_mark_args(testdir):
         def test_foo():
             pass
     """)
-    result = testdir.runpytest('--timeout=0')
+    result = testdir.runpytest()
     result.stdout.fnmatch_lines(['*TypeError*'])
 
 
@@ -135,7 +135,7 @@ def test_timeout_mark_noargs(testdir):
         def test_foo():
             pass
     """)
-    result = testdir.runpytest('--timeout=0')
+    result = testdir.runpytest()
     result.stdout.fnmatch_lines(['*TypeError*'])
 
 
@@ -168,3 +168,8 @@ def test_ini_method(testdir):
     """)
     result = testdir.runpytest()
     assert '=== 1 failed in ' not in result.outlines[-1]
+
+
+def test_marker_help(testdir):
+    result = testdir.runpytest('--markers')
+    result.stdout.fnmatch_lines(['@pytest.mark.timeout(*'])

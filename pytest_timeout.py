@@ -47,13 +47,20 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
-    """Activate timeout plugin if appropriate"""
+    """Activate timeout plugin"""
     # Note that this module is already registered under the "timeout"
     # name via setuptools' entry points.  So we need to use a
     # different name otherwise the plugin manager will assume the
     # module is already registered.
-    if config.getvalue('timeout') is not None or config.getini('timeout'):
-        config.pluginmanager.register(TimeoutPlugin(config), '_timeout')
+    config.pluginmanager.register(TimeoutPlugin(config), '_timeout')
+
+    # Register the marker so it shows up in --markers output.
+    config.addinivalue_line(
+        'markers',
+        'timeout(N, method=None): Set a timeout and timeout method on just '
+        'one test item.  The first argument, *N*, is the timeout in seconds '
+        'while the keyword, *method*, takes the same values as the '
+        '--timeout_method option.')
 
 
 class TimeoutPlugin(object):
