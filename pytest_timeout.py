@@ -17,7 +17,11 @@ import py
 import pytest
 
 
-SIGALRM = getattr(signal, 'SIGALRM', None)
+HAVE_SIGALRM = hasattr(signal, 'SIGALRM')
+if HAVE_SIGALRM:
+    DEFAULT_METHOD = 'signal'
+else:
+    DEFAULT_METHOD = 'thread'
 TIMEOUT_DESC = """
 Timeout in seconds before dumping the stacks.  Default is 0 which
 means no timeout.
@@ -71,65 +75,84 @@ class TimeoutPlugin(object):
         self._current_timer = None
         self.cancel = None
 
-    def timeout(self, item):
-        """Return the timeout for an item"""
-        if 'timeout' in item.keywords:
-            try:
-                return int(item.keywords['timeout'].args[0])
-            except KeyError:
-                pass
-            except ValueError:
-                raise ValueError('Timeout marker must have integer argument')
-        opt = item.config.getvalue('timeout')
-        if opt is not None:
-            return opt
-        ini = item.config.getini('timeout')
-        if ini:
-            try:
-                return int(ini)
-            except ValueError:
-                raise ValueError('Invalid timeout in ini config: %s' % ini)
-        return 0
+    def _parse_marker(self, marker):
+        """Return (timeout, method) tuple from marker
 
-    def method(self, item):
-        """Return the timeout method to be used for an item"""
-        if 'timeout' in item.keywords:
-            try:
-                method = item.keywords['timeout'].kwargs['method']
-            except KeyError:
-                pass
+        Either could be None.  The values are not interpreted, so
+        could still be bogus and even the wrong type.
+        """
+        if not marker.args and not marker.kwargs:
+            raise TypeError('Timeout marker must have at least one argument')
+        timeout = method = NOTSET = object()
+        for kw, val in marker.kwargs.items():
+            if kw == 'timeout':
+                timeout = val
+            elif kw == 'method':
+                method = val
             else:
-                return self._validate_method(method, 'marker')
-        cmdl = item.config.getvalue('timeout_method')
-        if cmdl is not None:
-            return self._validate_method(cmdl, 'command line')
-        ini = item.config.getini('timeout_method')
-        if ini:
-            return self._validate_method(ini, 'configuration file')
-        if SIGALRM:
-            return 'signal'
-        else:
-            return 'thread'
+                raise TypeError(
+                    'Invalid keyword argument for timeout marker: %s' % kw)
+        if len(marker.args) >= 1 and timeout is not NOTSET:
+            raise TypeError(
+                'Multiple values for timeout argument of timeout marker')
+        elif len(marker.args) >= 1:
+            timeout = marker.args[0]
+        if len(marker.args) >= 2 and method is not NOTSET:
+            raise TypeError(
+                'Multiple values for method argument of timeout marker')
+        elif len(marker.args) >= 2:
+            method = marker.args[1]
+        if len(marker.args) > 2:
+            raise TypeError('Too many arguments for timeout marker')
+        if timeout is NOTSET:
+            timeout = None
+        if method is NOTSET:
+            method = None
+        return timeout, method
+
+    def _validate_timeout(self, timeout, where):
+        if timeout is None:
+            return None
+        try:
+            return int(timeout)
+        except ValueError:
+            raise ValueError('Invalid timeout %s from %s' % (timeout, where))
 
     def _validate_method(self, method, where):
+        if method is None:
+            return None
         if method not in ['signal', 'thread']:
             raise ValueError('Invalid method %s from %s' % (method, where))
         return method
 
+    def get_params(self, item):
+        """Return (timeout, method) for an item"""
+        timeout = method = None
+        if 'timeout' in item.keywords:
+            timeout, method = self._parse_marker(item.keywords['timeout'])
+            timeout = self._validate_timeout(timeout, 'marker')
+            method = self._validate_method(method, 'marker')
+        if timeout is None:
+            timeout = item.config.getvalue('timeout')
+        if timeout is None:
+            ini = item.config.getini('timeout')
+            if ini:
+                timeout = self._validate_timeout(ini, 'config file')
+        if method is None:
+            method = item.config.getvalue('timeout_method')
+        if method is None:
+            ini = item.config.getini('timeout_method')
+            if ini:
+                method = self._validate_method(ini, 'config file')
+        if method is None:
+            method = DEFAULT_METHOD
+        return timeout, method
+
     def pytest_runtest_setup(self, item):
         """Setup up a timeout trigger and handler"""
-        if 'timeout' in item.keywords:
-            marker = item.keywords['timeout']
-            if len(marker.args) != 1:
-                raise TypeError('Timeout marker must have exactly 1 argument')
-            if marker.kwargs and list(marker.kwargs.keys()) != ['method']:
-                raise TypeError(
-                    'Timeout marker only takes the "method" keyword argument')
-
-        timeout = self.timeout(item)
-        if timeout <= 0:
+        timeout, method = self.get_params(item)
+        if timeout <= 0:        # None < 0
             return
-        method = self.method(item)
         if method == 'signal':
 
             def handler(signum, frame):

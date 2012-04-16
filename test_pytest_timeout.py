@@ -124,7 +124,19 @@ def test_timeout_mark_args(testdir):
             pass
     """)
     result = testdir.runpytest()
-    result.stdout.fnmatch_lines(['*TypeError*'])
+    result.stdout.fnmatch_lines(['*ValueError*'])
+
+
+def test_timeout_mark_method_nokw(testdir):
+    testdir.makepyfile("""
+        import time, pytest
+
+        @pytest.mark.timeout(1, 'thread')
+        def test_foo():
+            time.sleep(2)
+    """)
+    result = testdir.runpytest()
+    result.stderr.fnmatch_lines(['*+ Timeout +*'])
 
 
 def test_timeout_mark_noargs(testdir):
