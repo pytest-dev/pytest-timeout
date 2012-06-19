@@ -61,9 +61,9 @@ def pytest_configure(config):
     # Register the marker so it shows up in --markers output.
     config.addinivalue_line(
         'markers',
-        'timeout(N, method=None): Set a timeout and timeout method on just '
-        'one test item.  The first argument, *N*, is the timeout in seconds '
-        'while the keyword, *method*, takes the same values as the '
+        'timeout(timeout, method=None): Set a timeout and timeout method on '
+        'just one test item.  The first argument, *timeout*, is the timeout '
+        'in seconds while the keyword, *method*, takes the same values as the '
         '--timeout_method option.')
 
 
@@ -134,6 +134,10 @@ class TimeoutPlugin(object):
             method = self._validate_method(method, 'marker')
         if timeout is None:
             timeout = item.config.getvalue('timeout')
+        if timeout is None:
+            timeout = self._validate_timeout(
+                os.environ.get('PYTEST_TIMEOUT'),
+                'PYTEST_TIMEOUT environment variable')
         if timeout is None:
             ini = item.config.getini('timeout')
             if ini:

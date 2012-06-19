@@ -25,7 +25,7 @@ def pytest_funcarg__testdir(request):
     """
     testdir = request.getfuncargvalue('testdir')
 
-    def run_entrypoing_test():
+    def run_entrypoint_test():
         test_script = testdir.makepyfile(entrypoint_check="""
             import sys, pkg_resources
             if 'timeout' in [ep.name for ep in
@@ -34,7 +34,7 @@ def pytest_funcarg__testdir(request):
             """)
         return testdir.runpython(test_script)
 
-    runresult = request.cached_setup(setup=run_entrypoing_test)
+    runresult = request.cached_setup(setup=run_entrypoint_test)
     if not runresult.ret:
         os.environ['PYTHONPATH'] = os.path.dirname(__file__)
         if not os.path.isdir(os.path.join(os.path.dirname(__file__),
@@ -75,6 +75,18 @@ def test_thread(testdir):
             '*++ Timeout ++*',
             ])
     assert '++ Timeout ++' in result.stderr.lines[-1]
+
+
+def test_timeout_env(testdir, monkeypatch):
+    testdir.makepyfile("""
+        import time, pytest
+
+        def test_foo():
+            time.sleep(2)
+    """)
+    monkeypatch.setitem(os.environ, 'PYTEST_TIMEOUT', '1')
+    result = testdir.runpytest()
+    assert result.ret > 0
 
 
 @have_sigalrm
