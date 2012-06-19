@@ -85,6 +85,16 @@ process is stopped and no further tests are executed.
 Changelog
 ---------
 
+0.3dev
+~~~~~~
+
+* Added the PYTEST_TIMEOUT environment variable as a way of specifying
+  the timeout (closes issue #2).
+
+* More flexible marker argument parsing: you can now specify the
+  method using a positional argument.
+
+
 0.2
 ~~~
 

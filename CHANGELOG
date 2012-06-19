@@ -1,7 +1,0 @@
-Changes between 0.2 and ...
----------------------------
-
-- Added the PYTEST_TIMEOUT environment variable as a way of specifying
-  the timeout (closes issue #2).
-- More flexible marker argument parsing: you can now specify the
-  method using a positional argument.
