@@ -51,13 +51,6 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
-    """Activate timeout plugin"""
-    # Note that this module is already registered under the "timeout"
-    # name via setuptools' entry points.  So we need to use a
-    # different name otherwise the plugin manager will assume the
-    # module is already registered.
-    config.pluginmanager.register(TimeoutPlugin(config), '_timeout')
-
     # Register the marker so it shows up in --markers output.
     config.addinivalue_line(
         'markers',
@@ -67,216 +60,221 @@ def pytest_configure(config):
         '--timeout_method option.')
 
 
-class TimeoutPlugin(object):
-    """The timeout plugin"""
+    # def __init__(self, config):
+    #     self.config = config
+    #     self._current_timer = None
+    #     self.cancel = None
 
-    def __init__(self, config):
-        self.config = config
-        self._current_timer = None
-        self.cancel = None
 
-    def _parse_marker(self, marker):
-        """Return (timeout, method) tuple from marker
+def pytest_runtest_setup(item):
+    """Setup up a timeout trigger and handler"""
+    timeout, method = get_params(item)
+    if timeout <= 0:        # None < 0
+        return
+    if method == 'signal':
+        def handler(signum, frame):
+            __tracebackhide__ = True
+            timeout_sigalrm(item, timeout)
+        def cancel():
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, signal.SIG_DFL)
+        item.cancel_timeout = cancel
+        signal.signal(signal.SIGALRM, handler)
+        signal.alarm(timeout)
+    elif method == 'thread':
+        timer = threading.Timer(timeout, timeout_timer, (item, timeout))
+        def cancel():
+            timer.cancel()
+            timer.join()
+        item.cancel_timeout = cancel
+        timer.start()
 
-        Either could be None.  The values are not interpreted, so
-        could still be bogus and even the wrong type.
-        """
-        if not marker.args and not marker.kwargs:
-            raise TypeError('Timeout marker must have at least one argument')
-        timeout = method = NOTSET = object()
-        for kw, val in marker.kwargs.items():
-            if kw == 'timeout':
-                timeout = val
-            elif kw == 'method':
-                method = val
-            else:
-                raise TypeError(
-                    'Invalid keyword argument for timeout marker: %s' % kw)
-        if len(marker.args) >= 1 and timeout is not NOTSET:
+
+def pytest_runtest_teardown(item):
+    """Cancel the timeout trigger if it was set"""
+    # When skipping is raised from a pytest_runtest_setup function
+    # (as is the case when using the pytest.mark.skipif marker) we
+    # may be called without our setup counterpart having been
+    # called.
+    cancel = getattr(item, 'cancel_timeout', lambda: None)
+    cancel()
+
+
+################ Helper functions ################
+
+
+def get_params(item):
+    """Return (timeout, method) for an item"""
+    timeout = method = None
+    if 'timeout' in item.keywords:
+        timeout, method = _parse_marker(item.keywords['timeout'])
+        timeout = _validate_timeout(timeout, 'marker')
+        method = _validate_method(method, 'marker')
+    if timeout is None:
+        timeout = item.config.getvalue('timeout')
+    if timeout is None:
+        timeout = _validate_timeout(
+            os.environ.get('PYTEST_TIMEOUT'),
+            'PYTEST_TIMEOUT environment variable')
+    if timeout is None:
+        ini = item.config.getini('timeout')
+        if ini:
+            timeout = _validate_timeout(ini, 'config file')
+    if method is None:
+        method = item.config.getvalue('timeout_method')
+    if method is None:
+        ini = item.config.getini('timeout_method')
+        if ini:
+            method = _validate_method(ini, 'config file')
+    if method is None:
+        method = DEFAULT_METHOD
+    return timeout, method
+
+
+def _parse_marker(marker):
+    """Return (timeout, method) tuple from marker
+
+    Either could be None.  The values are not interpreted, so
+    could still be bogus and even the wrong type.
+    """
+    if not marker.args and not marker.kwargs:
+        raise TypeError('Timeout marker must have at least one argument')
+    timeout = method = NOTSET = object()
+    for kw, val in marker.kwargs.items():
+        if kw == 'timeout':
+            timeout = val
+        elif kw == 'method':
+            method = val
+        else:
             raise TypeError(
-                'Multiple values for timeout argument of timeout marker')
-        elif len(marker.args) >= 1:
-            timeout = marker.args[0]
-        if len(marker.args) >= 2 and method is not NOTSET:
-            raise TypeError(
-                'Multiple values for method argument of timeout marker')
-        elif len(marker.args) >= 2:
-            method = marker.args[1]
-        if len(marker.args) > 2:
-            raise TypeError('Too many arguments for timeout marker')
-        if timeout is NOTSET:
-            timeout = None
-        if method is NOTSET:
-            method = None
-        return timeout, method
+                'Invalid keyword argument for timeout marker: %s' % kw)
+    if len(marker.args) >= 1 and timeout is not NOTSET:
+        raise TypeError(
+            'Multiple values for timeout argument of timeout marker')
+    elif len(marker.args) >= 1:
+        timeout = marker.args[0]
+    if len(marker.args) >= 2 and method is not NOTSET:
+        raise TypeError(
+            'Multiple values for method argument of timeout marker')
+    elif len(marker.args) >= 2:
+        method = marker.args[1]
+    if len(marker.args) > 2:
+        raise TypeError('Too many arguments for timeout marker')
+    if timeout is NOTSET:
+        timeout = None
+    if method is NOTSET:
+        method = None
+    return timeout, method
 
-    def _validate_timeout(self, timeout, where):
-        if timeout is None:
-            return None
-        try:
-            return int(timeout)
-        except ValueError:
-            raise ValueError('Invalid timeout %s from %s' % (timeout, where))
 
-    def _validate_method(self, method, where):
-        if method is None:
-            return None
-        if method not in ['signal', 'thread']:
-            raise ValueError('Invalid method %s from %s' % (method, where))
-        return method
+def _validate_timeout(timeout, where):
+    """Helper for get_params()"""
+    if timeout is None:
+        return None
+    try:
+        return int(timeout)
+    except ValueError:
+        raise ValueError('Invalid timeout %s from %s' % (timeout, where))
 
-    def get_params(self, item):
-        """Return (timeout, method) for an item"""
-        timeout = method = None
-        if 'timeout' in item.keywords:
-            timeout, method = self._parse_marker(item.keywords['timeout'])
-            timeout = self._validate_timeout(timeout, 'marker')
-            method = self._validate_method(method, 'marker')
-        if timeout is None:
-            timeout = item.config.getvalue('timeout')
-        if timeout is None:
-            timeout = self._validate_timeout(
-                os.environ.get('PYTEST_TIMEOUT'),
-                'PYTEST_TIMEOUT environment variable')
-        if timeout is None:
-            ini = item.config.getini('timeout')
-            if ini:
-                timeout = self._validate_timeout(ini, 'config file')
-        if method is None:
-            method = item.config.getvalue('timeout_method')
-        if method is None:
-            ini = item.config.getini('timeout_method')
-            if ini:
-                method = self._validate_method(ini, 'config file')
-        if method is None:
-            method = DEFAULT_METHOD
-        return timeout, method
 
-    def pytest_runtest_setup(self, item):
-        """Setup up a timeout trigger and handler"""
-        timeout, method = self.get_params(item)
-        if timeout <= 0:        # None < 0
-            return
-        if method == 'signal':
+def _validate_method(method, where):
+    """Helper for get_params()"""
+    if method is None:
+        return None
+    if method not in ['signal', 'thread']:
+        raise ValueError('Invalid method %s from %s' % (method, where))
+    return method
 
-            def handler(signum, frame):
-                __tracebackhide__ = True
-                self.timeout_sigalrm(item, timeout)
 
-            self.cancel = self.cancel_sigalrm
-            signal.signal(signal.SIGALRM, handler)
-            signal.alarm(timeout)
-        elif method == 'thread':
-            timer = threading.Timer(timeout,
-                                    self.timeout_timer, (item, timeout))
-            self._current_timer = timer
-            self.cancel = self.cancel_timer
-            timer.start()
+def timeout_sigalrm(item, timeout):
+    """Dump stack of threads and raise an exception
 
-    def pytest_runtest_teardown(self):
-        """Cancel the timeout trigger"""
-        # When skipping is raised from a pytest_runtest_setup function
-        # (as is the case when using the pytest.mark.skipif marker) we
-        # may be called without our setup counterpart having been
-        # called.  Hence the test for self.cancel.
-        if self.cancel:
-            self.cancel()
-            self.cancel = None
+    This will output the stacks of any threads other then the
+    current to stderr and then raise an AssertionError, thus
+    terminating the test.
+    """
+    __tracebackhide__ = True
+    nthreads = len(threading.enumerate())
+    if nthreads > 1:
+        write_title('Timeout', sep='+')
+    dump_stacks()
+    if nthreads > 1:
+        write_title('Timeout', sep='+')
+    pytest.fail('Timeout >%ss' % timeout)
 
-    def cancel_sigalrm(self):
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, signal.SIG_DFL)
 
-    def cancel_timer(self):
-        self._current_timer.cancel()
-        self._current_timer.join()
-        self._current_timer = None
+def timeout_timer(item, timeout):
+    """Dump stack of threads and call os._exit()
 
-    def timeout_sigalrm(self, item, timeout):
-        """Dump stack of threads and raise an exception
+    This disables the capturemanager and dumps stdout and stderr.
+    Then the stacks are dumped and os._exit(1) is called.
+    """
+    try:
+        capman = item.config.pluginmanager.getplugin('capturemanager')
+        if capman:
+            stdout, stderr = capman.suspendcapture(item)
+        else:
+            stdout, stderr = None
+        write_title('Timeout', sep='+')
+        caplog = item.config.pluginmanager.getplugin('_capturelog')
+        if caplog and hasattr(item, 'capturelog_handler'):
+            log = item.capturelog_handler.stream.getvalue()
+            if log:
+                write_title('Captured log')
+                write(log)
+        if stdout:
+            write_title('Captured stdout')
+            write(stdout)
+        if stderr:
+            write_title('Captured stderr')
+            write(stderr)
+        dump_stacks()
+        write_title('Timeout', sep='+')
+    except Exception:
+        traceback.print_exc()
+    finally:
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(1)
 
-        This will output the stacks of any threads other then the
-        current to stderr and then raise an AssertionError, thus
-        terminating the test.
-        """
-        __tracebackhide__ = True
-        nthreads = len(threading.enumerate())
-        if nthreads > 1:
-            self.write_title('Timeout', sep='+')
-        self.dump_stacks()
-        if nthreads > 1:
-            self.write_title('Timeout', sep='+')
-        pytest.fail('Timeout >%ss' % timeout)
 
-    def timeout_timer(self, item, timeout):
-        """Dump stack of threads and call os._exit()
+def dump_stacks():
+    """Dump the stacks of all threads except the current thread"""
+    current_ident = threading.current_thread().ident
+    for thread_ident, frame in sys._current_frames().items():
+        if thread_ident == current_ident:
+            continue
+        for t in threading.enumerate():
+            if t.ident == thread_ident:
+                thread_name = t.name
+                break
+        else:
+            thread_name = '<unknown>'
+        write_title('Stack of %s (%s)' % (thread_name, thread_ident))
+        write(''.join(traceback.format_stack(frame)))
 
-        This disables the capturemanager and dumps stdout and stderr.
-        Then the stacks are dumped and os._exit(1) is called.
-        """
-        try:
-            capman = item.config.pluginmanager.getplugin('capturemanager')
-            if capman:
-                stdout, stderr = capman.suspendcapture(item)
-            else:
-                stdout, stderr = None
-            self.write_title('Timeout', sep='+')
-            caplog = item.config.pluginmanager.getplugin('_capturelog')
-            if caplog and hasattr(item, 'capturelog_handler'):
-                log = item.capturelog_handler.stream.getvalue()
-                if log:
-                    self.write_title('Captured log')
-                    self.write(log)
-            if stdout:
-                self.write_title('Captured stdout')
-                self.write(stdout)
-            if stderr:
-                self.write_title('Captured stderr')
-                self.write(stderr)
-            self.dump_stacks()
-            self.write_title('Timeout', sep='+')
-        except Exception:
-            traceback.print_exc()
-        finally:
-            sys.stdout.flush()
-            sys.stderr.flush()
-            os._exit(1)
 
-    def write_title(self, title, stream=None, sep='~'):
-        """Write a section title
+def write_title(title, stream=None, sep='~'):
+    """Write a section title
 
-        If *stream* is None sys.stderr will be used, *sep* is used to
-        draw the line.
-        """
-        if stream is None:
-            stream = sys.stderr
-        width = py.io.get_terminal_width()
-        fill = int((width - len(title) - 2) / 2)
-        line = ' '.join([sep * fill, title, sep * fill])
-        if len(line) < width:
-            line += sep * (width - len(line))
-        stream.write('\n' + line + '\n')
+    If *stream* is None sys.stderr will be used, *sep* is used to
+    draw the line.
+    """
+    if stream is None:
+        stream = sys.stderr
+    width = py.io.get_terminal_width()
+    fill = int((width - len(title) - 2) / 2)
+    line = ' '.join([sep * fill, title, sep * fill])
+    if len(line) < width:
+        line += sep * (width - len(line))
+    stream.write('\n' + line + '\n')
 
-    def write(self, text, stream=None):
-        """Write text to stream
 
-        Pretty stupid really, only here for symetry with .write_title().
-        """
-        if stream is None:
-            stream = sys.stderr
-        stream.write(text)
+def write(text, stream=None):
+    """Write text to stream
 
-    def dump_stacks(self):
-        """Dump the stacks of all threads except the current thread"""
-        current_ident = threading.current_thread().ident
-        for thread_ident, frame in sys._current_frames().items():
-            if thread_ident == current_ident:
-                continue
-            for t in threading.enumerate():
-                if t.ident == thread_ident:
-                    thread_name = t.name
-                    break
-            else:
-                thread_name = '<unknown>'
-            self.write_title('Stack of %s (%s)' % (thread_name, thread_ident))
-            self.write(''.join(traceback.format_stack(frame)))
+    Pretty stupid really, only here for symetry with .write_title().
+    """
+    if stream is None:
+        stream = sys.stderr
+    stream.write(text)
