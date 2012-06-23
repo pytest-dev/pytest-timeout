@@ -60,12 +60,6 @@ def pytest_configure(config):
         '--timeout_method option.')
 
 
-    # def __init__(self, config):
-    #     self.config = config
-    #     self._current_timer = None
-    #     self.cancel = None
-
-
 def pytest_runtest_setup(item):
     """Setup up a timeout trigger and handler"""
     timeout, method = get_params(item)
