@@ -63,7 +63,7 @@ def pytest_configure(config):
 def pytest_runtest_setup(item):
     """Setup up a timeout trigger and handler"""
     timeout, method = get_params(item)
-    if timeout <= 0:        # None < 0
+    if timeout is None or timeout <= 0:
         return
     if method == 'signal':
         def handler(signum, frame):
