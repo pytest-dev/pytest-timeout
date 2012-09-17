@@ -3,9 +3,6 @@
 To use this demo, invoke py.test on it::
 
    py.test failure_demo.py
-
-Since the current directory has a pytest.ini file which activates the
-plugin this will work correctly.
 """
 
 import threading
@@ -15,6 +12,7 @@ import pytest
 
 
 def sleep(s):
+    # Separate function to demonstrate nested calls
     time.sleep(s)
 
 
