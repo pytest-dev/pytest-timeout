@@ -8,7 +8,7 @@ time.  This is useful when e.g. running tests under a continuous
 integration (CI) server.
 
 Note that while by default on POSIX systems py.test will continue to
-execute the tests after a test has timed out this is not always
+execute the tests after a test has timed, out this is not always
 possible.  Often the only sure way to interrupt a hanging test is by
 terminating the entire process.  This in turn will result in no JUnit
 XML output being created etc.  But the plugin will ensure you will
@@ -33,7 +33,7 @@ will be terminated::
 
 Alternatively you can mark individual tests as having a timeout::
 
-   @pytest.mark.timeout(300)
+   @pytest.mark.timeout(60)
    def test_foo():
        pass
 
@@ -130,7 +130,7 @@ command line parameter or the ``timeout`` marker_.  Simply set their
 value to the string ``thread`` or ``signal`` to override the default
 method.  On a marker this is done using the ``method`` keyword::
 
-   @pytest.mark.timeout(method=thread)
+   @pytest.mark.timeout(method='thread')
    def test_foo():
        pass
 
@@ -141,7 +141,7 @@ __ http://pytest.org/latest/customize.html#how-test-configuration-is-read-from-c
 The ``timeout`` Marker API
 ==========================
 
-The full syntax of the timeout marker is::
+The full definition of the timeout marker is::
 
    pytest.mark.timeout(timeout=0, method=DEFAULT_METHOD)
 
