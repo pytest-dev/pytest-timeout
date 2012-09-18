@@ -3,3 +3,5 @@ TODO
 
 * Consider checking for an existing signal handler
    If it exists maybe fall back to the threading based solution.
+
+* Add support for eventlet and gevent

@@ -1,3 +1,4 @@
+==============
 pytest-timeout
 ==============
 
@@ -6,87 +7,160 @@ When doing so you will get a stack dump of all threads running at the
 time.  This is useful when e.g. running tests under a continuous
 integration (CI) server.
 
+Note that while by default on POSIX systems py.test will continue to
+execute the tests after a test has timed out this is not always
+possible.  Often the only sure way to interrupt a hanging test is by
+terminating the entire process.  This in turn will result in no JUnit
+XML output being created etc.  But the plugin will ensure you will
+have the debugging output on stderr nevertheless.  See below for
+detailed information on the timeout methods and their side-effects.
+
+The pytest-timeout plugin has been tested on python 2.6 or higher,
+including 3.X.
+
 
 Usage
------
+=====
 
 Install is as simple as e.g.::
 
    pip install pytest-timeout
 
-By default the plugin will not time out any tests, to enable timeouts
-you need to set a timeout using either the command line option
-``--timeout=N`` or using the likewise named configuration option in
-e.g. pytest.ini (see py.test docs for other files considered as
-configuration files)::
+Now you can run tests using a timeout, in seconds, after which they
+will be terminated::
 
-   [pytest]
-   timeout = N
+   py.test --timeout=300
 
-In both cases *N* is an integer number indicating the number of
-seconds before a timeout will occur.  Using a timeout of ``0`` will
-result in no timeout, but will enable the plugin so you can use the
-marker (see below).
+Alternatively you can mark individual tests as having a timeout::
 
-Furthermore it is possible to change the default timeout method used
-by the plugin using ``timeout_method`` as either a long option
-(prefixed with ``--``) or in the configuration file.  Valid values are
-"signal" and "thread", details of their behaviour and implications can
-be found below in the "How it Works" section.  Normally there is no
-need to worry about this however as the default will be fine.
-
-When the plugin is enabled by the command line option or configuration
-file item you can control it's behaviour on a per-test level using the
-*timeout* marker, e.g.::
-
-   @pytest.mark.timeout(5)
+   @pytest.mark.timeout(300)
    def test_foo():
        pass
 
-will set the timeout to 5 seconds for the test.  The marker can also
-specify the method used for a test using the ``method`` keyword::
+By default the plugin will not time out any tests, you must specify a
+valid timeout for the plugin to interrupt long-running tests.  A
+timeout is always specified as an integer number of seconds and can be
+defined in a number of ways, from low to high priority:
 
-   @pytest.mark.timeout(method='thread')
+1. You can set a global timeout in the `py.test configuration file`__
+   using the ``timeout`` option.  E.g.::
+
+      [pytest]
+      timeout = 300
+
+2. The ``PYTEST_TIMEOUT`` environment variable sets a global timeout
+   overriding a possible value in the configuration file.
+
+3. The ``--timeout`` command line option sets a global timeout
+   overriding both the environment variable and configuration option.
+
+4. Using the ``timeout`` marker_ on test items you can specify
+   timeouts on a per-item basis::
+
+      @pytest.mark.timeout(300)
+      def test_foo():
+          pass
+
+__ http://pytest.org/latest/customize.html#how-test-configuration-is-read-from-configuration-ini-files
+
+.. _marker: http://pytest.org/latest/mark.html
+
+Setting a timeout to 0 seconds disables the timeout, so if you have a
+global timeout set you can still disable the timeout by using the
+mark.
+
+Timeout Methods
+===============
+
+Interrupting tests which hang is not always as simple and can be
+platform dependent.  Furthermore some methods of terminating a test
+might conflict with the code under test itself.  The pytest-timeout
+plugin tries to pick the most suitable method based on your platform,
+but occasionally you may need to specify a specific timeout method
+explicitly.
+
+   If a timeout method does not work your safest bet is to use the
+   *thread* method.
+
+thread
+------
+
+This is the surest and most portable method.  It is also the default
+on systems not supporting the *signal* method.  For each test item the
+pytest-timeout plugin starts a timer thread which will terminate the
+whole process after the specified timeout.  When a test item finishes
+this timer thread is cancelled and the test run continues.
+
+The downsides of this method are that there is a relatively large
+overhead for running each test and that test runs are not completed.
+This means that other py.test features, like e.g. JUnit XML output or
+fixture teardown, will not function normally.  The second issue might
+be alleviated by using the ``--boxed`` option of the pytest-xdist_
+plugin.
+
+.. _pytest-xdist: http://pypi.python.org/pypi/pytest-xdist
+
+The benefit of this method is that it will always work.  Furthermore
+it will still provide you debugging information by printing the stacks
+of all the threads in the application to stderr.
+
+signal
+------
+
+If the system supports the SIGALRM signal the *signal* method will be
+used by default.  This method schedules an alarm when the test item
+starts and cancels it when it finishes.  If the alarm expires during
+the test the signal handler will dump the stack of any other threads
+running to stderr and use ``pytest.fail()`` to interrupt the test.
+
+The benefit of this method is that the py.test process is not
+terminated and the test run can complete normally.
+
+The main issue to look out for with this method is that it may
+interfere with the code under test.  If the code under test uses
+SIGALRM itself things will go wrong and you will have to choose the
+*thread* method.
+
+Specifying the Timeout Method
+-----------------------------
+
+The timeout method can be specified by using the ``timeout_method``
+option in the `py.test configuration file`__, the ``--timeout_method``
+command line parameter or the ``timeout`` marker_.  Simply set their
+value to the string ``thread`` or ``signal`` to override the default
+method.  On a marker this is done using the ``method`` keyword::
+
+   @pytest.mark.timeout(method=thread)
    def test_foo():
        pass
 
-This can be useful if you have a particular test who's code does
-conflict with the use of SIGALRM by this plugin.  You can of course
-modify both the timeout and marker at the same time::
+__ http://pytest.org/latest/customize.html#how-test-configuration-is-read-from-configuration-ini-files
 
-   @pytest.mark.timeout(5, method='signal')
-   def test_foo():
-       pass
+.. _marker: http://pytest.org/latest/mark.html
 
+The ``timeout`` Marker API
+==========================
 
-How It Works
-------------
+The full syntax of the timeout marker is::
 
-This plugin works in one of two ways.  If the system supports the
-SIGALRM signal an alarm will be scheduled when a test starts and
-cancelled when it finishes.  If the alarm expires during the test the
-signal handler will use `pytest.fail()` to interrupt the test after
-having dumped the stack of any other threads running to stderr.
+   pytest.mark.timeout(timeout=0, method=DEFAULT_METHOD)
 
-If the system does not support SIGALRM or the "thread" timeout method
-was selected then a timer thread will be used instead.  Once more, if
-this timer is not cancelled before it expires it will dump the stack
-of all threads to stderr before terminating the entire py.test process
-using os._exit(1).
+You can use either positional or keyword arguments for both the
+timeout and the method.  Neither needs to be present.
 
-The downside of the SIGALRM method is that the signal is used by the
-test framework.  If this signal is used by the code under test you
-will need to use the "thread" timeout method.  The limitation of the
-timer thread however is the extra overhead of creating a thread for
-each executed test and the fact that after one timeout the entire
-process is stopped and no further tests are executed.
+See the marker api documentation_ and examples_ for the various ways
+markers can be applied to test items.
+
+.. _documentation: http://pytest.org/latest/mark.html
+
+.. _examples: http://pytest.org/latest/example/markers.html#marking-whole-classes-or-modules
 
 
 Changelog
----------
+=========
 
-0.3dev
-~~~~~~
+0.3
+---
 
 * Added the PYTEST_TIMEOUT environment variable as a way of specifying
   the timeout (closes issue #2).
@@ -94,9 +168,13 @@ Changelog
 * More flexible marker argument parsing: you can now specify the
   method using a positional argument.
 
+* The plugin is now enabled by default.  There is no longer a need to
+  specify ``timeout=0`` in the configuration file or on the command
+  line simply so that a marker would work.
+
 
 0.2
-~~~
+---
 
 * Add a marker to modify the timeout delay using a @pytest.timeout(N)
   syntax, thanks to Laurant Brack for the initial code.
