@@ -2,6 +2,7 @@ syntax: glob
 build
 dist
 .tox
+.ropeproject
 *~
 *.pyc
 *.egg-info
