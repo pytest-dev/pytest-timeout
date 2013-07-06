@@ -2,7 +2,7 @@ from setuptools import setup
 
 
 setup(name='pytest-timeout',
-      description='pytest plugin to abort tests after a timeout',
+      description='py.test plugin to abort hanging tests',
       long_description=open("README").read(),
       version='0.3',
       author='Floris Bruynooghe',
