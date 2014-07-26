@@ -45,6 +45,12 @@ def pytest_addoption(parser):
                     type='choice',
                     action='store',
                     choices=['signal', 'thread'],
+                    help='Depreacted, use --timeout-method')
+    group.addoption('--timeout-method',
+                    dest='timeout_method',
+                    type='choice',
+                    action='store',
+                    choices=['signal', 'thread'],
                     help=METHOD_DESC)
     parser.addini('timeout', TIMEOUT_DESC)
     parser.addini('timeout_method', METHOD_DESC)
