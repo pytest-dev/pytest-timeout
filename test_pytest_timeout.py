@@ -1,49 +1,15 @@
 import os
 import os.path
 import signal
-import threading
 
-import pkg_resources
 import pytest
 
 
 pytest_plugins = 'pytester'
 
 
-def pytest_funcarg__testdir(request):
-    """Horible hack around setuptools' behaviour
-
-    The simple solution would be to require to be installed
-    (setuptools' develop mode would suffice).  However to make the
-    test also run from a plain checkout we need to ensure the plugin
-    is loaded by ensuring it is on sys.path and adding -p to the
-    pytest commandline.  But we also want to run the tests without
-    being installed but with an .egg-info directory present in the
-    checkout.  In this scenario adding this directory on sys.path will
-    make the entrypoint show up so we should no longer add -p to
-    py.test.
-    """
-    testdir = request.getfuncargvalue('testdir')
-
-    def run_entrypoint_test():
-        test_script = testdir.makepyfile(entrypoint_check="""
-            import sys, pkg_resources
-            if 'timeout' in [ep.name for ep in
-                             pkg_resources.iter_entry_points('pytest11')]:
-                sys.exit(1)
-            """)
-        return testdir.runpython(test_script)
-
-    runresult = request.cached_setup(setup=run_entrypoint_test)
-    if not runresult.ret:
-        os.environ['PYTHONPATH'] = os.path.dirname(__file__)
-        if not os.path.isdir(os.path.join(os.path.dirname(__file__),
-                                          'pytest_timeout.egg-info')):
-            testdir.plugins.append('pytest_timeout')
-    return testdir
-
-
-have_sigalrm = pytest.mark.skipif('not hasattr(signal, "SIGALRM")')
+have_sigalrm = pytest.mark.skipif(not hasattr(signal, "SIGALRM"),
+                                  reason='OS does not have SIGALRM')
 
 
 @have_sigalrm
@@ -56,8 +22,8 @@ def test_sigalrm(testdir):
      """)
     result = testdir.runpytest('--timeout=1')
     result.stdout.fnmatch_lines([
-            '*Failed: Timeout >1s*'
-            ])
+        '*Failed: Timeout >1s*'
+    ])
 
 
 def test_thread(testdir):
@@ -69,11 +35,11 @@ def test_thread(testdir):
     """)
     result = testdir.runpytest('--timeout=1', '--timeout_method=thread')
     result.stderr.fnmatch_lines([
-            '*++ Timeout ++*',
-            '*~~ Stack of MainThread* ~~*',
-            '*File *, line *, in *',
-            '*++ Timeout ++*',
-            ])
+        '*++ Timeout ++*',
+        '*~~ Stack of MainThread* ~~*',
+        '*File *, line *, in *',
+        '*++ Timeout ++*',
+    ])
     assert '++ Timeout ++' in result.stderr.lines[-1]
 
 
