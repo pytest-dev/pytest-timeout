@@ -5,7 +5,7 @@ setup(
     name='pytest-timeout',
     description='py.test plugin to abort hanging tests',
     long_description=open("README").read(),
-    version='0.3',
+    version='0.4dev1',
     author='Floris Bruynooghe',
     author_email='flub@devork.be',
     url='http://bitbucket.org/flub/pytest-timeout/',
