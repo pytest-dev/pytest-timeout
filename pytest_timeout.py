@@ -66,7 +66,15 @@ def pytest_configure(config):
         '--timeout_method option.')
 
 
-def pytest_runtest_setup(item):
+def pytest_runtest_protocol(item, __multicall__):
+    timeout_setup(item)
+    try:
+        return __multicall__.execute()
+    finally:
+        timeout_teardown(item)
+
+
+def timeout_setup(item):
     """Setup up a timeout trigger and handler"""
     timeout, method = get_params(item)
     if timeout is None or timeout <= 0:
@@ -90,17 +98,15 @@ def pytest_runtest_setup(item):
         timer.start()
 
 
-def pytest_runtest_teardown(item):
+def timeout_teardown(item):
     """Cancel the timeout trigger if it was set"""
     # When skipping is raised from a pytest_runtest_setup function
     # (as is the case when using the pytest.mark.skipif marker) we
     # may be called without our setup counterpart having been
     # called.
-    cancel = getattr(item, 'cancel_timeout', lambda: None)
-    cancel()
-
-
-################ Helper functions ################
+    cancel = getattr(item, 'cancel_timeout', None)
+    if cancel:
+        cancel()
 
 
 def get_params(item):
@@ -214,7 +220,7 @@ def timeout_timer(item, timeout):
         if capman:
             stdout, stderr = capman.suspendcapture(item)
         else:
-            stdout, stderr = None
+            stdout, stderr = None, None
         write_title('Timeout', sep='+')
         caplog = item.config.pluginmanager.getplugin('_capturelog')
         if caplog and hasattr(item, 'capturelog_handler'):

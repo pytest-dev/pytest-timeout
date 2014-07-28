@@ -45,7 +45,7 @@ def test_thread(testdir):
 
 def test_timeout_env(testdir, monkeypatch):
     testdir.makepyfile("""
-        import time, pytest
+        import time
 
         def test_foo():
             time.sleep(2)
@@ -53,6 +53,70 @@ def test_timeout_env(testdir, monkeypatch):
     monkeypatch.setitem(os.environ, 'PYTEST_TIMEOUT', '1')
     result = testdir.runpytest()
     assert result.ret > 0
+
+
+# @pytest.mark.parametrize('meth', [have_sigalrm('signal'), 'thread'])
+# def test_func_fix(meth, testdir):
+#     testdir.makepyfile("""
+#         import time, pytest
+
+#         @pytest.fixture(scope='function')
+#         def fix():
+#             time.sleep(2)
+
+#         def test_foo(fix):
+#             pass
+#     """)
+#     result = testdir.runpytest('--timeout=1',
+#                                '--timeout_method={0}'.format(meth))
+#     assert result.ret > 0
+#     assert 'Timeout' in result.stdout.str() + result.stderr.str()
+
+
+@pytest.mark.parametrize('meth', [have_sigalrm('signal'), 'thread'])
+@pytest.mark.parametrize('scope', ['function', 'class', 'module', 'session'])
+def test_fix_setup(meth, scope, testdir):
+    testdir.makepyfile("""
+        import time, pytest
+
+        class TestFoo:
+
+            @pytest.fixture(scope='{scope}')
+            def fix(self):
+                time.sleep(2)
+
+            def test_foo(self, fix):
+                pass
+    """.format(scope=scope))
+    result = testdir.runpytest('--timeout=1',
+                               '--timeout_method={0}'.format(meth))
+    assert result.ret > 0
+    assert 'Timeout' in result.stdout.str() + result.stderr.str()
+
+
+@pytest.mark.parametrize('meth', [have_sigalrm('signal'), 'thread'])
+@pytest.mark.parametrize('scope', ['function', 'class', 'module', 'session'])
+def test_fix_finalizer(meth, scope, testdir):
+    testdir.makepyfile("""
+        import time, pytest
+
+        class TestFoo:
+
+            @pytest.fixture(scope='{scope}')
+            def fix(self, request):
+                print('fix setup')
+                def fin():
+                    print('fix finaliser')
+                    time.sleep(2)
+                request.addfinalizer(fin)
+
+            def test_foo(self, fix):
+                pass
+    """.format(scope=scope))
+    result = testdir.runpytest('--timeout=1', '-s',
+                               '--timeout_method={0}'.format(meth))
+    assert result.ret > 0
+    assert 'Timeout' in result.stdout.str() + result.stderr.str()
 
 
 @have_sigalrm

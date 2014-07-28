@@ -16,7 +16,7 @@ have the debugging output on stderr nevertheless.  See below for
 detailed information on the timeout methods and their side-effects.
 
 The pytest-timeout plugin has been tested on python 2.6 or higher,
-including 3.X.
+including 3.X and pypy.
 
 
 Usage
@@ -156,8 +156,30 @@ markers can be applied to test items.
 .. _examples: http://pytest.org/latest/example/markers.html#marking-whole-classes-or-modules
 
 
+Timeouts in Fixture Teardown
+============================
+
+The plugin will happily terminate timeouts in the finalisers of
+fixtures.  The timeout specified applies to the entire process of
+setting up fixtures, running the tests and finalising the fixtures.
+However when a timeout occurs in a fixture finaliser and the test
+suite continues, i.e. the signal method is used, it must be realised
+that subsequent fixtures which need to be finalised might not have
+been executed, which could result in a brooken test-suite anyway.  In
+case of doubt the thread method which terminates the entire process
+might result in clearer output.
+
+
 Changelog
 =========
+
+0.4
+---
+
+* Support timeouts happening in (session scoped) finalizers.
+
+* Change command line option --timeout_method into --timeout-method
+  for consistency with py.test
 
 0.3
 ---
