@@ -5,7 +5,7 @@ setup(
     name='pytest-timeout',
     description='py.test plugin to abort hanging tests',
     long_description=open("README").read(),
-    version='0.4dev1',
+    version='0.4',
     author='Floris Bruynooghe',
     author_email='flub@devork.be',
     url='http://bitbucket.org/flub/pytest-timeout/',
@@ -14,7 +14,7 @@ setup(
     entry_points={'pytest11': ['timeout = pytest_timeout']},
     install_requires=['pytest>=2.4'],
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
         'Environment :: Plugins',
         'Intended Audience :: Developers',
