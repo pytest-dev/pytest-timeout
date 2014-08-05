@@ -3,17 +3,20 @@ pytest-timeout
 ==============
 
 This is a plugin which will terminate tests after a certain timeout.
-When doing so you will get a stack dump of all threads running at the
-time.  This is useful when e.g. running tests under a continuous
-integration (CI) server.
+When doing so it will show a stack dump of all threads running at the
+time.  This is useful when running tests under a continuous
+integration server or simply if you don't know why the test suite
+hangs.
 
 Note that while by default on POSIX systems py.test will continue to
 execute the tests after a test has timed, out this is not always
 possible.  Often the only sure way to interrupt a hanging test is by
-terminating the entire process.  This in turn will result in no JUnit
-XML output being created etc.  But the plugin will ensure you will
-have the debugging output on stderr nevertheless.  See below for
-detailed information on the timeout methods and their side-effects.
+terminating the entire process.  As this is a hard termination
+(``os._exit()``) it will result in no teardown, JUnit XML output etc.
+But the plugin will ensure you will have the debugging output on
+stderr nevertheless, which is the most important part at this stage.
+See below for detailed information on the timeout methods and their
+side-effects.
 
 The pytest-timeout plugin has been tested on python 2.6 or higher,
 including 3.X and pypy.
@@ -141,7 +144,7 @@ __ http://pytest.org/latest/customize.html#how-test-configuration-is-read-from-c
 The ``timeout`` Marker API
 ==========================
 
-The full definition of the timeout marker is::
+The full signature of the timeout marker is::
 
    pytest.mark.timeout(timeout=0, method=DEFAULT_METHOD)
 
@@ -165,7 +168,7 @@ setting up fixtures, running the tests and finalising the fixtures.
 However when a timeout occurs in a fixture finaliser and the test
 suite continues, i.e. the signal method is used, it must be realised
 that subsequent fixtures which need to be finalised might not have
-been executed, which could result in a brooken test-suite anyway.  In
+been executed, which could result in a broken test-suite anyway.  In
 case of doubt the thread method which terminates the entire process
 might result in clearer output.
 
