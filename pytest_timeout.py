@@ -74,6 +74,11 @@ def pytest_runtest_protocol(item, __multicall__):
         timeout_teardown(item)
 
 
+@pytest.mark.tryfirst
+def pytest_exception_interact(node):
+    timeout_teardown(node)
+
+
 def timeout_setup(item):
     """Setup up a timeout trigger and handler"""
     timeout, method = get_params(item)

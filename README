@@ -176,6 +176,9 @@ Changelog
 0.4
 ---
 
+* Timeouts will no longer be triggered when inside an interactive pdb
+  session using py.test's --pdb feature.
+
 * Support timeouts happening in (session scoped) finalizers.
 
 * Change command line option --timeout_method into --timeout-method
