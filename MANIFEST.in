@@ -2,3 +2,4 @@ include MANIFEST.in
 include LICENSE
 include test_pytest_timeout.py
 include failure_demo.py
+include tox.ini
