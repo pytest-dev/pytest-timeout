@@ -176,6 +176,12 @@ might result in clearer output.
 Changelog
 =========
 
+0.5
+---
+
+* Timeouts will no longer be triggered when inside an interactive pdb
+  session started by ``pytest.set_trace()`` / ``pdb.set_trace()``.
+
 0.4
 ---
 

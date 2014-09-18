@@ -1,6 +1,7 @@
 import os
 import os.path
 import signal
+import time
 
 import pytest
 
@@ -227,3 +228,22 @@ def test_ini_method(testdir):
 def test_marker_help(testdir):
     result = testdir.runpytest('--markers')
     result.stdout.fnmatch_lines(['@pytest.mark.timeout(*'])
+
+
+def test_suppresses_timeout_when_pdb_is_entered(testdir):
+    p1 = testdir.makepyfile("""
+        import pytest, pdb
+
+        @pytest.mark.timeout(1)
+        def test_foo():
+            pdb.set_trace()
+    """)
+    child = testdir.spawn_pytest(str(p1))
+    child.expect("test_foo")
+    time.sleep(2)
+    child.send('c\n')
+    child.sendeof()
+    result = child.read()
+    if child.isalive():
+        child.wait()
+    assert 'Timeout >1s' not in result

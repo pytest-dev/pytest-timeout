@@ -79,6 +79,15 @@ def pytest_exception_interact(node):
     timeout_teardown(node)
 
 
+def pytest_enter_pdb():
+    # Since pdb.set_trace happens outside of any pytest control, we don't have
+    # any pytest ``item`` here, so we cannot use timeout_teardown. Thus, we
+    # need another way to signify that the timeout should not be performed.
+    global SUPPRESS_TIMEOUT
+    SUPPRESS_TIMEOUT = True
+SUPPRESS_TIMEOUT = False
+
+
 def timeout_setup(item):
     """Setup up a timeout trigger and handler"""
     timeout, method = get_params(item)
@@ -204,6 +213,8 @@ def timeout_sigalrm(item, timeout):
     current to stderr and then raise an AssertionError, thus
     terminating the test.
     """
+    if SUPPRESS_TIMEOUT:
+        return
     __tracebackhide__ = True
     nthreads = len(threading.enumerate())
     if nthreads > 1:
@@ -220,6 +231,8 @@ def timeout_timer(item, timeout):
     This disables the capturemanager and dumps stdout and stderr.
     Then the stacks are dumped and os._exit(1) is called.
     """
+    if SUPPRESS_TIMEOUT:
+        return
     try:
         capman = item.config.pluginmanager.getplugin('capturemanager')
         if capman:

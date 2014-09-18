@@ -12,7 +12,7 @@ setup(
     license='MIT',
     py_modules=['pytest_timeout'],
     entry_points={'pytest11': ['timeout = pytest_timeout']},
-    install_requires=['pytest>=2.4'],
+    install_requires=['pytest>=2.6.3.dev3'],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
