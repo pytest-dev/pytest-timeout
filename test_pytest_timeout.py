@@ -246,4 +246,4 @@ def test_suppresses_timeout_when_pdb_is_entered(testdir):
     result = child.read()
     if child.isalive():
         child.wait()
-    assert 'Timeout >1s' not in result
+    assert b'Timeout >1s' not in result
