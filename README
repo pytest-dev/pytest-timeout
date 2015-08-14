@@ -19,7 +19,7 @@ See below for detailed information on the timeout methods and their
 side-effects.
 
 The pytest-timeout plugin has been tested on python 2.6 or higher,
-including 3.X and pypy.
+including 3.X, pypy and pypy3.
 
 
 Usage
@@ -181,6 +181,10 @@ Changelog
 
 * Timeouts will no longer be triggered when inside an interactive pdb
   session started by ``pytest.set_trace()`` / ``pdb.set_trace()``.
+
+* Add pypy3 environment to tox.ini.
+
+* Transfer repository to pytest-dev team account.
 
 0.4
 ---
