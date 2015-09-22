@@ -66,12 +66,11 @@ def pytest_configure(config):
         '--timeout_method option.')
 
 
-def pytest_runtest_protocol(item, __multicall__):
+@pytest.mark.hookwrapper
+def pytest_runtest_protocol(item):
     timeout_setup(item)
-    try:
-        return __multicall__.execute()
-    finally:
-        timeout_teardown(item)
+    outcome = yield
+    timeout_teardown(item)
 
 
 @pytest.mark.tryfirst
