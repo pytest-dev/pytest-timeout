@@ -5,12 +5,18 @@ import time
 
 import pytest
 
-
 pytest_plugins = 'pytester'
-
 
 have_sigalrm = pytest.mark.skipif(not hasattr(signal, "SIGALRM"),
                                   reason='OS does not have SIGALRM')
+
+@pytest.fixture
+def testdir(testdir):
+    if hasattr(testdir, "runpytest_subprocess"):
+        # on pytest-2.8 runpytest runs inline by default
+        # patch the testdir instance to use the subprocess method
+        testdir.runpytest = testdir.runpytest_subprocess
+    return testdir
 
 
 @have_sigalrm
