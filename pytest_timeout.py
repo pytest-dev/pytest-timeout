@@ -33,6 +33,7 @@ back to 'thread'.
 """.strip()
 
 
+@pytest.hookimpl
 def pytest_addoption(parser):
     """Add options to control the timeout plugin"""
     group = parser.getgroup(
@@ -56,6 +57,7 @@ def pytest_addoption(parser):
     parser.addini('timeout_method', METHOD_DESC)
 
 
+@pytest.hookimpl
 def pytest_configure(config):
     # Register the marker so it shows up in --markers output.
     config.addinivalue_line(
@@ -66,18 +68,19 @@ def pytest_configure(config):
         '--timeout_method option.')
 
 
-@pytest.mark.hookwrapper
+@pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_protocol(item):
     timeout_setup(item)
     outcome = yield
     timeout_teardown(item)
 
 
-@pytest.mark.tryfirst
+@pytest.hookimpl(tryfirst=True)
 def pytest_exception_interact(node):
     timeout_teardown(node)
 
 
+@pytest.hookimpl
 def pytest_enter_pdb():
     # Since pdb.set_trace happens outside of any pytest control, we don't have
     # any pytest ``item`` here, so we cannot use timeout_teardown. Thus, we

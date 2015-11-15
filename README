@@ -176,6 +176,14 @@ might result in clearer output.
 Changelog
 =========
 
+1.0.0
+-----
+
+* Bump version to 1.0 to commit to semantic versioning.
+* Fix issue #12: Now compatible with py.test 2.8, thanks Holger Krekel.
+* No longer test with pexpect on py26 as it is no longer supported
+* Require py.test 2.8 and use new hookimpl decorator
+
 0.5
 ---
 
