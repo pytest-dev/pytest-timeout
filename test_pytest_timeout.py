@@ -18,6 +18,15 @@ def testdir(testdir):
         testdir.runpytest = testdir.runpytest_subprocess
     return testdir
 
+def test_header(testdir):
+    testdir.makepyfile("""
+        def test_x(): pass
+    """)
+    result = testdir.runpytest('--timeout=1')
+    result.stdout.fnmatch_lines([
+        'timeout: 1s method:*'
+    ])
+
 
 @have_sigalrm
 def test_sigalrm(testdir):

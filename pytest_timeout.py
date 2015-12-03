@@ -67,12 +67,21 @@ def pytest_configure(config):
         'in seconds while the keyword, *method*, takes the same values as the '
         '--timeout_method option.')
 
+    config._env_timeout, config._env_timeout_method = get_env_timeout_and_method(config)
+
+
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_protocol(item):
     timeout_setup(item)
     outcome = yield
     timeout_teardown(item)
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_report_header(config):
+    if config._env_timeout:
+        return ["timeout: %ss method: %s" %
+                (config._env_timeout, config._env_timeout_method)]
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -125,6 +134,27 @@ def timeout_teardown(item):
         cancel()
 
 
+def get_env_timeout_and_method(config):
+    timeout = config.getvalue('timeout')
+    if timeout is None:
+        timeout = _validate_timeout(
+            os.environ.get('PYTEST_TIMEOUT'),
+            'PYTEST_TIMEOUT environment variable')
+    if timeout is None:
+        ini = config.getini('timeout')
+        if ini:
+            timeout = _validate_timeout(ini, 'config file')
+
+    method = config.getvalue('timeout_method')
+    if method is None:
+        ini = config.getini('timeout_method')
+        if ini:
+            method = _validate_method(ini, 'config file')
+    if method is None:
+        method = DEFAULT_METHOD
+    return timeout, method
+
+
 def get_params(item):
     """Return (timeout, method) for an item"""
     timeout = method = None
@@ -133,23 +163,9 @@ def get_params(item):
         timeout = _validate_timeout(timeout, 'marker')
         method = _validate_method(method, 'marker')
     if timeout is None:
-        timeout = item.config.getvalue('timeout')
-    if timeout is None:
-        timeout = _validate_timeout(
-            os.environ.get('PYTEST_TIMEOUT'),
-            'PYTEST_TIMEOUT environment variable')
-    if timeout is None:
-        ini = item.config.getini('timeout')
-        if ini:
-            timeout = _validate_timeout(ini, 'config file')
+        timeout = item.config._env_timeout
     if method is None:
-        method = item.config.getvalue('timeout_method')
-    if method is None:
-        ini = item.config.getini('timeout_method')
-        if ini:
-            method = _validate_method(ini, 'config file')
-    if method is None:
-        method = DEFAULT_METHOD
+        method = item.config._env_timeout_method
     return timeout, method
 
 
