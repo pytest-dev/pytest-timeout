@@ -176,6 +176,11 @@ might result in clearer output.
 Changelog
 =========
 
+1.1.0
+-----
+
+* Report (default) timeout duration in header, thanks Holger Krekel.
+
 1.0.0
 -----
 
