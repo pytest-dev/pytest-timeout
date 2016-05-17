@@ -40,7 +40,7 @@ def pytest_addoption(parser):
         'timeout', 'Interrupt test run and dump stacks of all threads after '
         'a test times out')
     group.addoption('--timeout',
-                    type='int',
+                    type=float,
                     help=TIMEOUT_DESC)
     group.addoption('--timeout_method',
                     type='choice',
@@ -109,11 +109,11 @@ def timeout_setup(item):
             __tracebackhide__ = True
             timeout_sigalrm(item, timeout)
         def cancel():
-            signal.alarm(0)
+            signal.setitimer(signal.ITIMER_REAL, 0)
             signal.signal(signal.SIGALRM, signal.SIG_DFL)
         item.cancel_timeout = cancel
         signal.signal(signal.SIGALRM, handler)
-        signal.alarm(timeout)
+        signal.setitimer(signal.ITIMER_REAL, timeout)
     elif method == 'thread':
         timer = threading.Timer(timeout, timeout_timer, (item, timeout))
         def cancel():
@@ -210,7 +210,7 @@ def _validate_timeout(timeout, where):
     if timeout is None:
         return None
     try:
-        return int(timeout)
+        return float(timeout)
     except ValueError:
         raise ValueError('Invalid timeout %s from %s' % (timeout, where))
 
