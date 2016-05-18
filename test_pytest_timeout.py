@@ -10,6 +10,7 @@ pytest_plugins = 'pytester'
 have_sigalrm = pytest.mark.skipif(not hasattr(signal, "SIGALRM"),
                                   reason='OS does not have SIGALRM')
 
+
 @pytest.fixture
 def testdir(testdir):
     if hasattr(testdir, "runpytest_subprocess"):
@@ -18,13 +19,14 @@ def testdir(testdir):
         testdir.runpytest = testdir.runpytest_subprocess
     return testdir
 
+
 def test_header(testdir):
     testdir.makepyfile("""
         def test_x(): pass
     """)
     result = testdir.runpytest('--timeout=1')
     result.stdout.fnmatch_lines([
-        'timeout: 1s method:*'
+        'timeout: 1.0s method:*'
     ])
 
 
@@ -36,9 +38,9 @@ def test_sigalrm(testdir):
         def test_foo():
             time.sleep(2)
      """)
-    result = testdir.runpytest('--timeout=1')
+    result = testdir.runpytest('--timeout=1.5')
     result.stdout.fnmatch_lines([
-        '*Failed: Timeout >1s*'
+        '*Failed: Timeout >1.5s*'
     ])
 
 
@@ -146,7 +148,7 @@ def test_timeout_mark_sigalrm(testdir):
             assert False
     """)
     result = testdir.runpytest()
-    result.stdout.fnmatch_lines(['*Failed: Timeout >1s*'])
+    result.stdout.fnmatch_lines(['*Failed: Timeout >1.0s*'])
 
 
 def test_timeout_mark_timer(testdir):
@@ -161,7 +163,19 @@ def test_timeout_mark_timer(testdir):
     result.stderr.fnmatch_lines(['*++ Timeout ++*'])
 
 
-def test_timeout_mark_nonint(testdir):
+def test_timeout_mark_non_int(testdir):
+    testdir.makepyfile("""
+     import time, pytest
+
+     @pytest.mark.timeout(0.5)
+     def test_foo():
+         time.sleep(1)
+    """)
+    result = testdir.runpytest('--timeout_method=thread')
+    result.stderr.fnmatch_lines(['*++ Timeout ++*'])
+
+
+def test_timeout_mark_non_number(testdir):
     testdir.makepyfile("""
         import pytest
 
@@ -218,7 +232,7 @@ def test_ini_timeout(testdir):
     """)
     testdir.makeini("""
         [pytest]
-        timeout = 1
+        timeout = 1.5
     """)
     result = testdir.runpytest()
     assert result.ret
@@ -261,4 +275,4 @@ def test_suppresses_timeout_when_pdb_is_entered(testdir):
     result = child.read()
     if child.isalive():
         child.wait()
-    assert b'Timeout >1s' not in result
+    assert b'Timeout >1.0s' not in result
