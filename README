@@ -176,6 +176,12 @@ might result in clearer output.
 Changelog
 =========
 
+1.2.0
+-----
+
+* Allow using floats as timeout instead of only integers, thanks Tom
+  Myers.
+
 1.1.0
 -----
 
