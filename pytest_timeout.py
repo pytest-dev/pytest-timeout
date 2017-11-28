@@ -254,7 +254,10 @@ def timeout_timer(item, timeout):
     try:
         capman = item.config.pluginmanager.getplugin('capturemanager')
         if capman:
-            stdout, stderr = capman.suspendcapture(item)
+            if pytest.__version__ >= '3.3':
+                stdout, stderr = capman.suspend_global_capture(item)
+            else:
+                stdout, stderr = capman.suspendcapture(item)
         else:
             stdout, stderr = None, None
         write_title('Timeout', sep='+')
