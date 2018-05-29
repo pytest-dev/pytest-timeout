@@ -26,7 +26,9 @@ def test_header(testdir):
     """)
     result = testdir.runpytest('--timeout=1')
     result.stdout.fnmatch_lines([
-        'timeout: 1.0s method:*'
+        'timeout: 1.0s',
+        'timeout method:*',
+        'timeout defer:*'
     ])
 
 
@@ -112,9 +114,51 @@ def test_fix_setup(meth, scope, testdir):
     assert 'Timeout' in result.stdout.str() + result.stderr.str()
 
 
+def test_fix_setup_defer(testdir):
+    testdir.makepyfile("""
+        import time, pytest
+
+        class TestFoo:
+
+            @pytest.fixture
+            def fix(self):
+                time.sleep(2)
+
+            @pytest.mark.timeout(defer=True)
+            def test_foo(self, fix):
+                pass
+    """)
+    result = testdir.runpytest('--timeout=1')
+    assert result.ret == 0
+    assert 'Timeout' not in result.stdout.str() + result.stderr.str()
+
+
 @pytest.mark.parametrize('meth', [have_sigalrm('signal'), 'thread'])
 @pytest.mark.parametrize('scope', ['function', 'class', 'module', 'session'])
 def test_fix_finalizer(meth, scope, testdir):
+    testdir.makepyfile("""
+        import time, pytest
+
+        class TestFoo:
+
+            @pytest.fixture
+            def fix(self, request):
+                print('fix setup')
+                def fin():
+                    print('fix finaliser')
+                    time.sleep(2)
+                request.addfinalizer(fin)
+
+            def test_foo(self, fix):
+                pass
+    """)
+    result = testdir.runpytest('--timeout=1', '-s',
+                               '--timeout_method={0}'.format(meth))
+    assert result.ret > 0
+    assert 'Timeout' in result.stdout.str() + result.stderr.str()
+
+
+def test_fix_finalizer_defer(testdir):
     testdir.makepyfile("""
         import time, pytest
 
@@ -128,13 +172,13 @@ def test_fix_finalizer(meth, scope, testdir):
                     time.sleep(2)
                 request.addfinalizer(fin)
 
+            @pytest.mark.timeout(defer=True)
             def test_foo(self, fix):
                 pass
     """.format(scope=scope))
-    result = testdir.runpytest('--timeout=1', '-s',
-                               '--timeout_method={0}'.format(meth))
-    assert result.ret > 0
-    assert 'Timeout' in result.stdout.str() + result.stderr.str()
+    result = testdir.runpytest('--timeout=1', '-s')
+    assert result.ret == 0
+    assert 'Timeout' not in result.stdout.str() + result.stderr.str()
 
 
 @have_sigalrm
@@ -236,6 +280,26 @@ def test_ini_timeout(testdir):
     """)
     result = testdir.runpytest()
     assert result.ret
+
+
+def test_ini_timeout_defer(testdir):
+    testdir.makepyfile("""
+        import time, pytest
+
+        @pytest.fixture
+        def slow():
+            time.sleep(2)
+
+        def test_foo(slow):
+            pass
+    """)
+    testdir.makeini("""
+        [pytest]
+        timeout = 1.5
+        timeout_defer = true
+    """)
+    result = testdir.runpytest()
+    assert result.ret == 0
 
 
 def test_ini_method(testdir):
