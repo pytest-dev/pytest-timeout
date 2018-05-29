@@ -12,6 +12,7 @@ import signal
 import sys
 import threading
 import traceback
+from collections import namedtuple
 
 import py
 import pytest
@@ -31,6 +32,13 @@ Timeout mechanism to use.  'signal' uses SIGALRM if available,
 'thread' uses a timer thread.  The default is to use 'signal' and fall
 back to 'thread'.
 """.strip()
+DEFER_DESC = """
+When set to True, defers the timeout evaluation to only the test
+function body, ignoring the time it takes when evaluating any fixtures
+used in the test.
+""".strip()
+
+Settings = namedtuple('Settings', ['timeout', 'method', 'defer'])
 
 
 @pytest.hookimpl
@@ -55,6 +63,7 @@ def pytest_addoption(parser):
                     help=METHOD_DESC)
     parser.addini('timeout', TIMEOUT_DESC)
     parser.addini('timeout_method', METHOD_DESC)
+    parser.addini('timeout_defer', DEFER_DESC, type='bool')
 
 
 @pytest.hookimpl
@@ -62,26 +71,48 @@ def pytest_configure(config):
     # Register the marker so it shows up in --markers output.
     config.addinivalue_line(
         'markers',
-        'timeout(timeout, method=None): Set a timeout and timeout method on '
-        'just one test item.  The first argument, *timeout*, is the timeout '
-        'in seconds while the keyword, *method*, takes the same values as the '
-        '--timeout_method option.')
+        'timeout(timeout, method=None, defer=False): Set a timeout, timeout '
+        'method and evaluation defer on just one test item.  The first '
+        'argument, *timeout*, is the timeout in seconds while the keyword, '
+        '*method*, takes the same values as the --timeout_method option. The '
+        '*defer* keyword, when set to True, defers the timeout evaluation '
+        'to only the test function body, ignoring the time it takes when '
+        'evaluating any fixrures used in the test.')
 
-    config._env_timeout, config._env_timeout_method = get_env_timeout_and_method(config)
+    settings = get_env_settings(config)
+    config._env_timeout = settings.timeout
+    config._env_timeout_method = settings.method
+    config._env_timeout_defer = settings.defer
 
 
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_protocol(item):
-    timeout_setup(item)
+    defer = get_defer_setting(item)
+    if defer is False:
+        timeout_setup(item)
     outcome = yield
-    timeout_teardown(item)
+    if defer is False:
+        timeout_teardown(item)
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_call(item):
+    defer = get_defer_setting(item)
+    if defer is True:
+        timeout_setup(item)
+    outcome = yield
+    if defer is True:
+        timeout_teardown(item)
+
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_report_header(config):
     if config._env_timeout:
-        return ["timeout: %ss method: %s" %
-                (config._env_timeout, config._env_timeout_method)]
+        return ["timeout: %ss\ntimeout method: %s\ntimeout defer: %s" %
+                (config._env_timeout,
+                 config._env_timeout_method,
+                 config._env_timeout_defer)]
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -101,21 +132,23 @@ SUPPRESS_TIMEOUT = False
 
 def timeout_setup(item):
     """Setup up a timeout trigger and handler"""
-    timeout, method = get_params(item)
-    if timeout is None or timeout <= 0:
+    timeout, method, defer = get_params(item)
+    params = get_params(item)
+    if params.timeout is None or params.timeout <= 0:
         return
-    if method == 'signal':
+    if params.method == 'signal':
         def handler(signum, frame):
             __tracebackhide__ = True
-            timeout_sigalrm(item, timeout)
+            timeout_sigalrm(item, params.timeout)
         def cancel():
             signal.setitimer(signal.ITIMER_REAL, 0)
             signal.signal(signal.SIGALRM, signal.SIG_DFL)
         item.cancel_timeout = cancel
         signal.signal(signal.SIGALRM, handler)
-        signal.setitimer(signal.ITIMER_REAL, timeout)
-    elif method == 'thread':
-        timer = threading.Timer(timeout, timeout_timer, (item, timeout))
+        signal.setitimer(signal.ITIMER_REAL, params.timeout)
+    elif params.method == 'thread':
+        timer = threading.Timer(params.timeout, timeout_timer,
+                                (item, params.timeout))
         def cancel():
             timer.cancel()
             timer.join()
@@ -134,7 +167,7 @@ def timeout_teardown(item):
         cancel()
 
 
-def get_env_timeout_and_method(config):
+def get_env_settings(config):
     timeout = config.getvalue('timeout')
     if timeout is None:
         timeout = _validate_timeout(
@@ -152,21 +185,44 @@ def get_env_timeout_and_method(config):
             method = _validate_method(ini, 'config file')
     if method is None:
         method = DEFAULT_METHOD
-    return timeout, method
+
+    defer = config.getini('timeout_defer')
+    if defer == []:
+        # No value set
+        defer = None
+    if defer is not None:
+        defer = _validate_defer(defer, 'config file')
+    return Settings(timeout, method, defer or False)
+
+
+def get_defer_setting(item):
+    """Return the defer setting for an item"""
+    defer = None
+    if 'timeout' in item.keywords:
+        settings = _parse_marker(item.keywords['timeout'])
+        defer = _validate_defer(settings.defer, 'marker')
+    if defer is None:
+        defer = item.config._env_timeout_defer
+    if defer is None:
+        defer = False
+    return defer
 
 
 def get_params(item):
     """Return (timeout, method) for an item"""
-    timeout = method = None
+    timeout = method = defer = None
     if 'timeout' in item.keywords:
-        timeout, method = _parse_marker(item.keywords['timeout'])
-        timeout = _validate_timeout(timeout, 'marker')
-        method = _validate_method(method, 'marker')
+        settings = _parse_marker(item.keywords['timeout'])
+        timeout = _validate_timeout(settings.timeout, 'marker')
+        method = _validate_method(settings.method, 'marker')
+        defer = _validate_defer(settings.defer, 'marker')
     if timeout is None:
         timeout = item.config._env_timeout
     if method is None:
         method = item.config._env_timeout_method
-    return timeout, method
+    if defer is None:
+        defer = item.config._env_timeout_defer
+    return Settings(timeout, method, defer)
 
 
 def _parse_marker(marker):
@@ -177,12 +233,14 @@ def _parse_marker(marker):
     """
     if not marker.args and not marker.kwargs:
         raise TypeError('Timeout marker must have at least one argument')
-    timeout = method = NOTSET = object()
+    timeout = method = defer = NOTSET = object()
     for kw, val in marker.kwargs.items():
         if kw == 'timeout':
             timeout = val
         elif kw == 'method':
             method = val
+        elif kw == 'defer':
+            defer = val
         else:
             raise TypeError(
                 'Invalid keyword argument for timeout marker: %s' % kw)
@@ -202,7 +260,9 @@ def _parse_marker(marker):
         timeout = None
     if method is NOTSET:
         method = None
-    return timeout, method
+    if defer is NOTSET:
+        defer = None
+    return Settings(timeout, method, defer)
 
 
 def _validate_timeout(timeout, where):
@@ -222,6 +282,15 @@ def _validate_method(method, where):
     if method not in ['signal', 'thread']:
         raise ValueError('Invalid method %s from %s' % (method, where))
     return method
+
+
+def _validate_defer(defer, where):
+    """Helper for get_params()"""
+    if defer is None:
+        return False
+    if not isinstance(defer, bool):
+        raise ValueError('Invalid defer value %s from %s' % (defer, where))
+    return defer
 
 
 def timeout_sigalrm(item, timeout):
