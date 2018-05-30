@@ -318,6 +318,26 @@ def test_ini_method(testdir):
     assert '=== 1 failed in ' not in result.outlines[-1]
 
 
+def test_timeout_marker_inheritance(testdir):
+    testdir.makepyfile("""
+        import time, pytest
+
+        @pytest.mark.timeout(timeout=2)
+        class TestFoo:
+
+            @pytest.mark.timeout(timeout=3)
+            def test_foo_2(self):
+                time.sleep(2)
+
+            @pytest.mark.timeout(timeout=3)
+            def test_foo_1(self):
+                time.sleep(1)
+    """)
+    result = testdir.runpytest('--timeout=1', '-s')
+    assert result.ret == 0
+    assert 'Timeout' not in result.stdout.str() + result.stderr.str()
+
+
 def test_marker_help(testdir):
     result = testdir.runpytest('--markers')
     result.stdout.fnmatch_lines(['@pytest.mark.timeout(*'])
