@@ -211,7 +211,7 @@ def get_params(item):
     """Return (timeout, method) for an item"""
     timeout = method = func_only = None
     if 'timeout' in item.keywords:
-        settings = _parse_marker(item.keywords['timeout'])
+        settings = _parse_marker(next(item.iter_markers(name='timeout')))
         timeout = _validate_timeout(settings.timeout, 'marker')
         method = _validate_method(settings.method, 'marker')
         func_only = _validate_func_only(settings.func_only, 'marker')
