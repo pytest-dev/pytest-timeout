@@ -164,7 +164,7 @@ def test_fix_finalizer_defer(testdir):
 
         class TestFoo:
 
-            @pytest.fixture(scope='{scope}')
+            @pytest.fixture
             def fix(self, request):
                 print('fix setup')
                 def fin():
@@ -175,7 +175,7 @@ def test_fix_finalizer_defer(testdir):
             @pytest.mark.timeout(defer=True)
             def test_foo(self, fix):
                 pass
-    """.format(scope=scope))
+    """
     result = testdir.runpytest('--timeout=1', '-s')
     assert result.ret == 0
     assert 'Timeout' not in result.stdout.str() + result.stderr.str()
