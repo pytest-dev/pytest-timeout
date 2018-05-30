@@ -53,7 +53,7 @@ def test_thread(testdir):
         def test_foo():
             time.sleep(2)
     """)
-    result = testdir.runpytest('--timeout=1', '--timeout_method=thread')
+    result = testdir.runpytest('--timeout=1', '--timeout-method=thread')
     result.stderr.fnmatch_lines([
         '*++ Timeout ++*',
         '*~~ Stack of MainThread* ~~*',
@@ -88,7 +88,7 @@ def test_timeout_env(testdir, monkeypatch):
 #             pass
 #     """)
 #     result = testdir.runpytest('--timeout=1',
-#                                '--timeout_method={0}'.format(meth))
+#                                '--timeout-method={0}'.format(meth))
 #     assert result.ret > 0
 #     assert 'Timeout' in result.stdout.str() + result.stderr.str()
 
@@ -109,7 +109,7 @@ def test_fix_setup(meth, scope, testdir):
                 pass
     """.format(scope=scope))
     result = testdir.runpytest('--timeout=1',
-                               '--timeout_method={0}'.format(meth))
+                               '--timeout-method={0}'.format(meth))
     assert result.ret > 0
     assert 'Timeout' in result.stdout.str() + result.stderr.str()
 
@@ -153,7 +153,7 @@ def test_fix_finalizer(meth, scope, testdir):
                 pass
     """)
     result = testdir.runpytest('--timeout=1', '-s',
-                               '--timeout_method={0}'.format(meth))
+                               '--timeout-method={0}'.format(meth))
     assert result.ret > 0
     assert 'Timeout' in result.stdout.str() + result.stderr.str()
 
@@ -203,7 +203,7 @@ def test_timeout_mark_timer(testdir):
         def test_foo():
             time.sleep(2)
     """)
-    result = testdir.runpytest('--timeout_method=thread')
+    result = testdir.runpytest('--timeout-method=thread')
     result.stderr.fnmatch_lines(['*++ Timeout ++*'])
 
 
@@ -215,7 +215,7 @@ def test_timeout_mark_non_int(testdir):
      def test_foo():
          time.sleep(1)
     """)
-    result = testdir.runpytest('--timeout_method=thread')
+    result = testdir.runpytest('--timeout-method=thread')
     result.stderr.fnmatch_lines(['*++ Timeout ++*'])
 
 
