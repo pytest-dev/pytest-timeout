@@ -28,7 +28,7 @@ def test_header(testdir):
     result.stdout.fnmatch_lines([
         'timeout: 1.0s',
         'timeout method:*',
-        'timeout defer:*'
+        'timeout func_only:*'
     ])
 
 
@@ -114,7 +114,7 @@ def test_fix_setup(meth, scope, testdir):
     assert 'Timeout' in result.stdout.str() + result.stderr.str()
 
 
-def test_fix_setup_defer(testdir):
+def test_fix_setup_func_only(testdir):
     testdir.makepyfile("""
         import time, pytest
 
@@ -124,7 +124,7 @@ def test_fix_setup_defer(testdir):
             def fix(self):
                 time.sleep(2)
 
-            @pytest.mark.timeout(defer=True)
+            @pytest.mark.timeout(func_only=True)
             def test_foo(self, fix):
                 pass
     """)
@@ -158,7 +158,7 @@ def test_fix_finalizer(meth, scope, testdir):
     assert 'Timeout' in result.stdout.str() + result.stderr.str()
 
 
-def test_fix_finalizer_defer(testdir):
+def test_fix_finalizer_func_only(testdir):
     testdir.makepyfile("""
         import time, pytest
 
@@ -172,10 +172,10 @@ def test_fix_finalizer_defer(testdir):
                     time.sleep(2)
                 request.addfinalizer(fin)
 
-            @pytest.mark.timeout(defer=True)
+            @pytest.mark.timeout(func_only=True)
             def test_foo(self, fix):
                 pass
-    """
+    """)
     result = testdir.runpytest('--timeout=1', '-s')
     assert result.ret == 0
     assert 'Timeout' not in result.stdout.str() + result.stderr.str()
@@ -282,7 +282,7 @@ def test_ini_timeout(testdir):
     assert result.ret
 
 
-def test_ini_timeout_defer(testdir):
+def test_ini_timeout_func_only(testdir):
     testdir.makepyfile("""
         import time, pytest
 
@@ -296,7 +296,7 @@ def test_ini_timeout_defer(testdir):
     testdir.makeini("""
         [pytest]
         timeout = 1.5
-        timeout_defer = true
+        timeout_func_only = true
     """)
     result = testdir.runpytest()
     assert result.ret == 0
