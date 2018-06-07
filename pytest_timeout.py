@@ -32,13 +32,13 @@ Timeout mechanism to use.  'signal' uses SIGALRM if available,
 'thread' uses a timer thread.  The default is to use 'signal' and fall
 back to 'thread'.
 """.strip()
-DEFER_DESC = """
+FUNC_ONLY_DESC = """
 When set to True, defers the timeout evaluation to only the test
 function body, ignoring the time it takes when evaluating any fixtures
 used in the test.
 """.strip()
 
-Settings = namedtuple('Settings', ['timeout', 'method', 'defer'])
+Settings = namedtuple('Settings', ['timeout', 'method', 'func_only'])
 
 
 @pytest.hookimpl
@@ -63,7 +63,7 @@ def pytest_addoption(parser):
                     help=METHOD_DESC)
     parser.addini('timeout', TIMEOUT_DESC)
     parser.addini('timeout_method', METHOD_DESC)
-    parser.addini('timeout_defer', DEFER_DESC, type='bool')
+    parser.addini('timeout_func_only', FUNC_ONLY_DESC, type='bool')
 
 
 @pytest.hookimpl
@@ -71,48 +71,48 @@ def pytest_configure(config):
     # Register the marker so it shows up in --markers output.
     config.addinivalue_line(
         'markers',
-        'timeout(timeout, method=None, defer=False): Set a timeout, timeout '
-        'method and evaluation defer on just one test item.  The first '
+        'timeout(timeout, method=None, func_only=False): Set a timeout, timeout '
+        'method and func_only evaluation on just one test item.  The first '
         'argument, *timeout*, is the timeout in seconds while the keyword, '
         '*method*, takes the same values as the --timeout_method option. The '
-        '*defer* keyword, when set to True, defers the timeout evaluation '
+        '*func_only* keyword, when set to True, defers the timeout evaluation '
         'to only the test function body, ignoring the time it takes when '
         'evaluating any fixrures used in the test.')
 
     settings = get_env_settings(config)
     config._env_timeout = settings.timeout
     config._env_timeout_method = settings.method
-    config._env_timeout_defer = settings.defer
+    config._env_timeout_func_only = settings.func_only
 
 
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_protocol(item):
-    defer = get_defer_setting(item)
-    if defer is False:
+    func_only = get_func_only_setting(item)
+    if func_only is False:
         timeout_setup(item)
     outcome = yield
-    if defer is False:
+    if func_only is False:
         timeout_teardown(item)
 
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_call(item):
-    defer = get_defer_setting(item)
-    if defer is True:
+    func_only = get_func_only_setting(item)
+    if func_only is True:
         timeout_setup(item)
     outcome = yield
-    if defer is True:
+    if func_only is True:
         timeout_teardown(item)
 
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_report_header(config):
     if config._env_timeout:
-        return ["timeout: %ss\ntimeout method: %s\ntimeout defer: %s" %
+        return ["timeout: %ss\ntimeout method: %s\ntimeout func_only: %s" %
                 (config._env_timeout,
                  config._env_timeout_method,
-                 config._env_timeout_defer)]
+                 config._env_timeout_func_only)]
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -132,7 +132,6 @@ SUPPRESS_TIMEOUT = False
 
 def timeout_setup(item):
     """Setup up a timeout trigger and handler"""
-    timeout, method, defer = get_params(item)
     params = get_params(item)
     if params.timeout is None or params.timeout <= 0:
         return
@@ -186,43 +185,43 @@ def get_env_settings(config):
     if method is None:
         method = DEFAULT_METHOD
 
-    defer = config.getini('timeout_defer')
-    if defer == []:
+    func_only = config.getini('timeout_func_only')
+    if func_only == []:
         # No value set
-        defer = None
-    if defer is not None:
-        defer = _validate_defer(defer, 'config file')
-    return Settings(timeout, method, defer or False)
+        func_only = None
+    if func_only is not None:
+        func_only = _validate_func_only(func_only, 'config file')
+    return Settings(timeout, method, func_only or False)
 
 
-def get_defer_setting(item):
-    """Return the defer setting for an item"""
-    defer = None
+def get_func_only_setting(item):
+    """Return the func_only setting for an item"""
+    func_only = None
     if 'timeout' in item.keywords:
         settings = _parse_marker(item.keywords['timeout'])
-        defer = _validate_defer(settings.defer, 'marker')
-    if defer is None:
-        defer = item.config._env_timeout_defer
-    if defer is None:
-        defer = False
-    return defer
+        func_only = _validate_func_only(settings.func_only, 'marker')
+    if func_only is None:
+        func_only = item.config._env_timeout_func_only
+    if func_only is None:
+        func_only = False
+    return func_only
 
 
 def get_params(item):
     """Return (timeout, method) for an item"""
-    timeout = method = defer = None
+    timeout = method = func_only = None
     if 'timeout' in item.keywords:
         settings = _parse_marker(item.keywords['timeout'])
         timeout = _validate_timeout(settings.timeout, 'marker')
         method = _validate_method(settings.method, 'marker')
-        defer = _validate_defer(settings.defer, 'marker')
+        func_only = _validate_func_only(settings.func_only, 'marker')
     if timeout is None:
         timeout = item.config._env_timeout
     if method is None:
         method = item.config._env_timeout_method
-    if defer is None:
-        defer = item.config._env_timeout_defer
-    return Settings(timeout, method, defer)
+    if func_only is None:
+        func_only = item.config._env_timeout_func_only
+    return Settings(timeout, method, func_only)
 
 
 def _parse_marker(marker):
@@ -233,14 +232,14 @@ def _parse_marker(marker):
     """
     if not marker.args and not marker.kwargs:
         raise TypeError('Timeout marker must have at least one argument')
-    timeout = method = defer = NOTSET = object()
+    timeout = method = func_only = NOTSET = object()
     for kw, val in marker.kwargs.items():
         if kw == 'timeout':
             timeout = val
         elif kw == 'method':
             method = val
-        elif kw == 'defer':
-            defer = val
+        elif kw == 'func_only':
+            func_only = val
         else:
             raise TypeError(
                 'Invalid keyword argument for timeout marker: %s' % kw)
@@ -260,9 +259,9 @@ def _parse_marker(marker):
         timeout = None
     if method is NOTSET:
         method = None
-    if defer is NOTSET:
-        defer = None
-    return Settings(timeout, method, defer)
+    if func_only is NOTSET:
+        func_only = None
+    return Settings(timeout, method, func_only)
 
 
 def _validate_timeout(timeout, where):
@@ -284,13 +283,13 @@ def _validate_method(method, where):
     return method
 
 
-def _validate_defer(defer, where):
+def _validate_func_only(func_only, where):
     """Helper for get_params()"""
-    if defer is None:
+    if func_only is None:
         return False
-    if not isinstance(defer, bool):
-        raise ValueError('Invalid defer value %s from %s' % (defer, where))
-    return defer
+    if not isinstance(func_only, bool):
+        raise ValueError('Invalid func_only value %s from %s' % (func_only, where))
+    return func_only
 
 
 def timeout_sigalrm(item, timeout):
