@@ -1,0 +1,40 @@
+# See
+# https://confluence.atlassian.com/bitbucket/configure-bitbucket-pipelines-yml-792298910.html
+# for docs on the format.
+#
+# Valid python image tags: https://hub.docker.com/r/library/python/
+# Valid pypy image tags: https://hub.docker.com/_/pypy/
+
+pipelines:
+  default:
+    - parallel:
+      - step:
+          name: py27
+          image: python:2.7
+          script:
+            - pip install -U pip setuptools tox
+            - tox -e py27
+      - step:
+          name: py35
+          image: python:3.5
+          script:
+            - pip install -U pip setuptools tox
+            - tox -e py35
+      - step:
+          name: py36
+          image: python:3.6
+          script:
+            - pip install -U pip setuptools tox
+            - tox -e py36
+      - step:
+          name: pypy
+          image: pypy:2
+          script:
+            - pip install -U pip setuptools tox
+            - tox -e pypy
+      - step:
+          name: pypy3
+          image: pypy:3
+          script:
+            - pip install -U pip setuptools tox
+            - tox -e pypy3
