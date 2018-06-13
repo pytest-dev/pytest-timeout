@@ -198,7 +198,7 @@ def get_func_only_setting(item):
     """Return the func_only setting for an item"""
     func_only = None
     if 'timeout' in item.keywords:
-        settings = _parse_marker(item.keywords['timeout'])
+        settings = get_params(item)
         func_only = _validate_func_only(settings.func_only, 'marker')
     if func_only is None:
         func_only = item.config._env_timeout_func_only
@@ -211,7 +211,7 @@ def get_params(item):
     """Return (timeout, method) for an item"""
     timeout = method = func_only = None
     if 'timeout' in item.keywords:
-        settings = _parse_marker(next(item.iter_markers(name='timeout')))
+        settings = _parse_marker(item.get_closest_marker(name='timeout'))
         timeout = _validate_timeout(settings.timeout, 'marker')
         method = _validate_method(settings.method, 'marker')
         func_only = _validate_func_only(settings.func_only, 'marker')
