@@ -177,6 +177,14 @@ might result in clearer output.
 Changelog
 =========
 
+1.3.0
+-----
+
+- Make it possible to only run the timeout timer on the test function
+  and not the whole fixture setup + test + teardown duration.  Thanks
+  Pedro Algarvio for the work!
+- Use the new pytest marker API.
+
 1.2.1
 -----
 
