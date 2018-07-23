@@ -177,6 +177,13 @@ might result in clearer output.
 Changelog
 =========
 
+1.3.1
+-----
+
+- Fix deprecation warning on Python 3.6.  Thanks Mickaël Schoentgen
+- Create a valid tag for the release.  Somehow this didn't happen for
+  1.3.0, that tag points to a non-existing commit.
+
 1.3.0
 -----
 
