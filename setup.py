@@ -1,5 +1,6 @@
-from setuptools import setup
 import io
+
+from setuptools import setup
 
 
 setup(
