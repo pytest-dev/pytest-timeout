@@ -5,7 +5,7 @@ import io
 setup(
     name='pytest-timeout',
     description='py.test plugin to abort hanging tests',
-    long_description=io.open("README", encoding="utf-8").read(),
+    long_description=io.open('README', encoding='utf-8').read(),
     version='1.3.1',
     author='Floris Bruynooghe',
     author_email='flub@devork.be',
