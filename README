@@ -177,6 +177,15 @@ might result in clearer output.
 Changelog
 =========
 
+1.3.2
+-----
+
+- This changelog was ommitted for the 1.3.2 release and was added
+  afterwards.  Apologies for the confusion.
+- Fix pytest 3.7.3 compatibility.  The capture API had changed
+  slightly and this needed fixing.  Thanks Bruno Oliveira for the
+  contribution.
+
 1.3.1
 -----
 
