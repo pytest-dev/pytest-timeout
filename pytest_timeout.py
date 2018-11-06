@@ -13,6 +13,7 @@ import sys
 import threading
 import traceback
 from collections import namedtuple
+from distutils.version import StrictVersion
 
 import py
 import pytest
@@ -323,13 +324,12 @@ def timeout_timer(item, timeout):
     try:
         capman = item.config.pluginmanager.getplugin('capturemanager')
         if capman:
-            if pytest.__version__ >= '3.7.3':
+            pytest_version = StrictVersion(pytest.__version__)
+            if pytest_version >= StrictVersion('3.7.3'):
                 capman.suspend_global_capture(item)
                 stdout, stderr = capman.read_global_capture()
-            elif pytest.__version__ >= '3.3':
-                stdout, stderr = capman.suspend_global_capture(item)
             else:
-                stdout, stderr = capman.suspendcapture(item)
+                stdout, stderr = capman.suspend_global_capture(item)
         else:
             stdout, stderr = None, None
         write_title('Timeout', sep='+')
