@@ -93,7 +93,7 @@ def test_timeout_env(testdir, monkeypatch):
 #     assert 'Timeout' in result.stdout.str() + result.stderr.str()
 
 
-@pytest.mark.parametrize('meth', [have_sigalrm('signal'), 'thread'])
+@pytest.mark.parametrize('meth', [pytest.param('signal', marks=have_sigalrm), 'thread'])
 @pytest.mark.parametrize('scope', ['function', 'class', 'module', 'session'])
 def test_fix_setup(meth, scope, testdir):
     testdir.makepyfile("""
@@ -133,7 +133,7 @@ def test_fix_setup_func_only(testdir):
     assert 'Timeout' not in result.stdout.str() + result.stderr.str()
 
 
-@pytest.mark.parametrize('meth', [have_sigalrm('signal'), 'thread'])
+@pytest.mark.parametrize('meth', [pytest.param('signal', marks=have_sigalrm), 'thread'])
 @pytest.mark.parametrize('scope', ['function', 'class', 'module', 'session'])
 def test_fix_finalizer(meth, scope, testdir):
     testdir.makepyfile("""
