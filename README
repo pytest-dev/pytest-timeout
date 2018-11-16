@@ -177,6 +177,11 @@ might result in clearer output.
 Changelog
 =========
 
+1.3.3
+-----
+
+- Fix support for pytest >= 3.10.
+
 1.3.2
 -----
 
