@@ -46,7 +46,7 @@ def pytest_addoption(parser):
     """Add options to control the timeout plugin"""
     group = parser.getgroup(
         "timeout",
-        "Interrupt test run and dump stacks of all threads after " "a test times out",
+        "Interrupt test run and dump stacks of all threads after a test times out",
     )
     group.addoption("--timeout", type=float, help=TIMEOUT_DESC)
     group.addoption(

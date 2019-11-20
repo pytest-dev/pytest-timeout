@@ -25,6 +25,9 @@ jobs:
             tox_env: "py38"
           - python: "pypy2"
             tox_env: "pypy2"
+          - python: "3.7"
+            tox_env: "linting"
+
 
     steps:
     - uses: actions/checkout@v1
