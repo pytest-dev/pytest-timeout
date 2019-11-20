@@ -10,7 +10,7 @@ setup(
     version='1.3.3',
     author='Floris Bruynooghe',
     author_email='flub@devork.be',
-    url='http://bitbucket.org/pytest-dev/pytest-timeout/',
+    url='http://github.com/pytest-dev/pytest-timeout/',
     license='MIT',
     py_modules=['pytest_timeout'],
     entry_points={'pytest11': ['timeout = pytest_timeout']},
