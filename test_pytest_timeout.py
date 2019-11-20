@@ -3,12 +3,15 @@ import os.path
 import signal
 import time
 
+import pexpect
 import pytest
 
 pytest_plugins = 'pytester'
 
 have_sigalrm = pytest.mark.skipif(not hasattr(signal, "SIGALRM"),
                                   reason='OS does not have SIGALRM')
+have_spawn = pytest.mark.skipif(not hasattr(pexpect, "spawn"),
+                               reason="pexpect does not have spawn")
 
 
 @pytest.fixture
@@ -343,7 +346,9 @@ def test_marker_help(testdir):
     result.stdout.fnmatch_lines(['@pytest.mark.timeout(*'])
 
 
+@have_spawn
 def test_suppresses_timeout_when_pdb_is_entered(testdir):
+    pytest.importorskip('pexpect')
     p1 = testdir.makepyfile("""
         import pytest, pdb
 
