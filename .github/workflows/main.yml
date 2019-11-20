@@ -1,0 +1,43 @@
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["2.7", "3.5", "3.6", "3.7", "3.8", "pypy2", "pypy3"]
+        os: [ubuntu-latest, windows-latest]
+        include:
+          - python: "2.7"
+            tox_env: "py27"
+          - python: "3.5"
+            tox_env: "py35"
+          - python: "3.6"
+            tox_env: "py36"
+          - python: "3.7"
+            tox_env: "py37"
+          - python: "3.8"
+            tox_env: "py38"
+          - python: "pypy2"
+            tox_env: "pypy2"
+          - python: "pypy3"
+            tox_env: "pypy3"
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python }}
+    - name: Install tox
+      run: |
+        python -m pip install --upgrade pip
+        pip install -U setuptools tox
+    - name: Test
+      run: |
+        tox -e ${{ matrix.tox_env }}

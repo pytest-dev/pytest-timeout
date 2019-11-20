@@ -2,6 +2,20 @@
 pytest-timeout
 ==============
 
+|python| |version| |anaconda| |ci|
+
+.. |version| image:: http://img.shields.io/pypi/v/pytest-timeout.svg
+  :target: https://pypi.python.org/pypi/pytest-timeout
+
+.. |anaconda| image:: https://img.shields.io/conda/vn/conda-forge/pytest-timeout.svg
+  :target: https://anaconda.org/conda-forge/pytest-timeout
+
+.. |ci| image:: https://github.com/pytest-dev/pytest-timeout/workflows/build/badge.svg
+  :target: https://github.com/pytest-dev/pytest-timeout/actions
+
+.. |python| image:: https://img.shields.io/pypi/pyversions/pytest-timeout.svg
+  :target: https://pypi.python.org/pypi/pytest-timeout/
+
 This is a plugin which will terminate tests after a certain timeout.
 When doing so it will show a stack dump of all threads running at the
 time.  This is useful when running tests under a continuous
