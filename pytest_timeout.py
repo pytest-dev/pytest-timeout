@@ -147,6 +147,7 @@ def timeout_setup(item):
     elif params.method == 'thread':
         timer = threading.Timer(params.timeout, timeout_timer,
                                 (item, params.timeout))
+        timer.name = "%s %s" (__name__, item.nodeid)
         def cancel():
             timer.cancel()
             timer.join()
