@@ -4,7 +4,6 @@ To use this demo, invoke py.test on it::
 
    py.test failure_demo.py
 """
-
 import threading
 import time
 
