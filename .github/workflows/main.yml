@@ -1,12 +1,9 @@
+---
 name: build
-
-on: [push, pull_request]
-
+"on": [push, pull_request]
 jobs:
   build:
-
     runs-on: ${{ matrix.os }}
-
     strategy:
       fail-fast: false
       matrix:
@@ -27,18 +24,16 @@ jobs:
             tox_env: "pypy2"
           - python: "3.7"
             tox_env: "linting"
-
-
     steps:
-    - uses: actions/checkout@v1
-    - name: Set up Python
-      uses: actions/setup-python@v1
-      with:
-        python-version: ${{ matrix.python }}
-    - name: Install tox
-      run: |
-        python -m pip install --upgrade pip
-        pip install -U setuptools tox
-    - name: Test
-      run: |
-        tox -e ${{ matrix.tox_env }}
+      - uses: actions/checkout@v1
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install tox
+        run: |
+          python -m pip install --upgrade pip
+          pip install -U setuptools tox
+      - name: Test
+        run: |
+          tox -e ${{ matrix.tox_env }}
