@@ -92,7 +92,7 @@ def pytest_runtest_protocol(item):
     func_only = get_func_only_setting(item)
     if func_only is False:
         timeout_setup(item)
-    outcome = yield
+    yield
     if func_only is False:
         timeout_teardown(item)
 
@@ -102,7 +102,7 @@ def pytest_runtest_call(item):
     func_only = get_func_only_setting(item)
     if func_only is True:
         timeout_setup(item)
-    outcome = yield
+    yield
     if func_only is True:
         timeout_teardown(item)
 
