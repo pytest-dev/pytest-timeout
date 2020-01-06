@@ -191,6 +191,14 @@ might result in clearer output.
 Changelog
 =========
 
+1.3.4
+-----
+
+- Give the threads a name to help debugging, thanks Thomas Grainger.
+- Changed location to https://github.com/pytest-dev/pytest-timeout
+  because bitbucket is dropping mercurial support.  Thanks Thomas
+  Grainger and Bruno Oliveira.
+
 1.3.3
 -----
 
