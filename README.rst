@@ -57,7 +57,7 @@ Alternatively you can mark individual tests as having a timeout::
 
 By default the plugin will not time out any tests, you must specify a
 valid timeout for the plugin to interrupt long-running tests.  A
-timeout is always specified as an integer number of seconds and can be
+timeout is always specified as a number of seconds, and can be
 defined in a number of ways, from low to high priority:
 
 1. You can set a global timeout in the `py.test configuration file`__
