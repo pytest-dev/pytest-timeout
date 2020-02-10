@@ -79,9 +79,9 @@ defined in a number of ways, from low to high priority:
       def test_foo():
           pass
 
-__ http://pytest.org/latest/customize.html#how-test-configuration-is-read-from-configuration-ini-files
+__ https://docs.pytest.org/en/latest/reference.html#ini-options-ref
 
-.. _marker: http://pytest.org/latest/mark.html
+.. _marker: https://docs.pytest.org/en/latest/mark.html
 
 Setting a timeout to 0 seconds disables the timeout, so if you have a
 global timeout set you can still disable the timeout by using the
@@ -116,7 +116,7 @@ fixture teardown, will not function normally.  The second issue might
 be alleviated by using the ``--boxed`` option of the pytest-xdist_
 plugin.
 
-.. _pytest-xdist: http://pypi.python.org/pypi/pytest-xdist
+.. _pytest-xdist: https://pypi.org/project/pytest-xdist/
 
 The benefit of this method is that it will always work.  Furthermore
 it will still provide you debugging information by printing the stacks
@@ -152,9 +152,9 @@ method.  On a marker this is done using the ``method`` keyword::
    def test_foo():
        pass
 
-__ http://pytest.org/latest/customize.html#how-test-configuration-is-read-from-configuration-ini-files
+__ https://docs.pytest.org/en/latest/reference.html#ini-options-ref
 
-.. _marker: http://pytest.org/latest/mark.html
+.. _marker: https://docs.pytest.org/en/latest/mark.html
 
 The ``timeout`` Marker API
 ==========================
@@ -169,9 +169,9 @@ timeout and the method.  Neither needs to be present.
 See the marker api documentation_ and examples_ for the various ways
 markers can be applied to test items.
 
-.. _documentation: http://pytest.org/latest/mark.html
+.. _documentation: https://docs.pytest.org/en/latest/mark.html
 
-.. _examples: http://pytest.org/latest/example/markers.html#marking-whole-classes-or-modules
+.. _examples: https://docs.pytest.org/en/latest/example/markers.html#marking-whole-classes-or-modules
 
 
 Timeouts in Fixture Teardown
