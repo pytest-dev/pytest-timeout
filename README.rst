@@ -4,7 +4,7 @@ pytest-timeout
 
 |python| |version| |anaconda| |ci|
 
-.. |version| image:: http://img.shields.io/pypi/v/pytest-timeout.svg
+.. |version| image:: https://img.shields.io/pypi/v/pytest-timeout.svg
   :target: https://pypi.python.org/pypi/pytest-timeout
 
 .. |anaconda| image:: https://img.shields.io/conda/vn/conda-forge/pytest-timeout.svg
