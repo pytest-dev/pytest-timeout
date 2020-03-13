@@ -78,7 +78,7 @@ def pytest_configure(config):
         "*method*, takes the same values as the --timeout_method option. The "
         "*func_only* keyword, when set to True, defers the timeout evaluation "
         "to only the test function body, ignoring the time it takes when "
-        "evaluating any fixrures used in the test.",
+        "evaluating any fixtures used in the test.",
     )
 
     settings = get_env_settings(config)
