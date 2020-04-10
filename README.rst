@@ -24,7 +24,7 @@ integration server or simply if you don't know why the test suite hangs.
 
 .. note::
     The way this plugin detects whether or not a debugging session is active
-    is by checking if `pydevd.py` is present in any of the stack frames OR
+    is by checking if ``pydevd.py`` is present in any of the stack frames OR
     if pytest itself drops you into a pbd session.
 
 .. note::
