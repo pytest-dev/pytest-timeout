@@ -140,7 +140,11 @@ SUPPRESS_TIMEOUT = False
 def timeout_setup(item):
     """Setup up a timeout trigger and handler"""
     params = get_params(item)
-    if params.timeout is None or params.timeout <= 0:
+
+    def is_debugging():
+        return any(True for frame in inspect.stack() if frame[1].endswith('pydevd.py'))
+
+    if params.timeout is None or params.timeout <= 0 or is_debugging():
         return
     if params.method == "signal":
 
