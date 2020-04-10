@@ -6,6 +6,7 @@ useful when running tests on a continuous integration server.
 If the platform supports SIGALRM this is used to raise an exception in
 the test, otherwise os._exit(1) is used.
 """
+import inspect
 import os
 import signal
 import sys
