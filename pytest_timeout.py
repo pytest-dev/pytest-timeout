@@ -135,6 +135,17 @@ def pytest_enter_pdb():
     SUPPRESS_TIMEOUT = True
 
 
+def is_debugging():
+    """
+    Detects if a debugging session is in progress by checking if either of two conditions is true. 
+        1. examining the stack frames to see if pydevd.py — 
+            a debugging framework used by VSCode, PyCharm, and others — is present.
+        2. Check is SUPPRESS_TIMEOUT is set to True
+    """
+    global SUPPRESS_TIMEOUT
+    return SUPPRESS_TIMEOUT or any(True for frame in inspect.stack() if frame[1].endswith("pydevd.py"))
+
+
 SUPPRESS_TIMEOUT = False
 
 
@@ -142,10 +153,7 @@ def timeout_setup(item):
     """Setup up a timeout trigger and handler"""
     params = get_params(item)
 
-    def is_debugging():
-        return any(True for frame in inspect.stack() if frame[1].endswith('pydevd.py'))
-
-    if params.timeout is None or params.timeout <= 0 or is_debugging():
+    if params.timeout is None or params.timeout <= 0:
         return
     if params.method == "signal":
 
@@ -316,7 +324,7 @@ def timeout_sigalrm(item, timeout):
     current to stderr and then raise an AssertionError, thus
     terminating the test.
     """
-    if SUPPRESS_TIMEOUT:
+    if is_debugging():
         return
     __tracebackhide__ = True
     nthreads = len(threading.enumerate())
@@ -334,7 +342,7 @@ def timeout_timer(item, timeout):
     This disables the capturemanager and dumps stdout and stderr.
     Then the stacks are dumped and os._exit(1) is called.
     """
-    if SUPPRESS_TIMEOUT:
+    if is_debugging():
         return
     try:
         capman = item.config.pluginmanager.getplugin("capturemanager")
