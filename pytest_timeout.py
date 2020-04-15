@@ -139,11 +139,13 @@ def is_debugging():
     """
     Detects if a debugging session is in progress by checking if either of two conditions is true. 
         1. examining the stack frames to see if pydevd.py — 
-            a debugging framework used by VSCode, PyCharm, and others — is present.
+     a debugging framework used by VSCode, PyCharm, and others — is present.
         2. Check is SUPPRESS_TIMEOUT is set to True
     """
     global SUPPRESS_TIMEOUT
-    return SUPPRESS_TIMEOUT or any(True for frame in inspect.stack() if frame[1].endswith("pydevd.py"))
+    return SUPPRESS_TIMEOUT or any(
+        True for frame in inspect.stack() if frame[1].endswith("pydevd.py")
+    )
 
 
 SUPPRESS_TIMEOUT = False
