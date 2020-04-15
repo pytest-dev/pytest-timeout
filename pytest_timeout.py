@@ -137,8 +137,9 @@ def pytest_enter_pdb():
 
 def is_debugging():
     """
-    Detects if a debugging session is in progress by checking if either of two conditions is true.
-        1. examining the stack frames to see if pydevd.py — 
+    Detects if a debugging session is in progress by checking if either of
+     the following conditions is true:
+        1. examining the stack frames to see if pydevd.py —
      a debugging framework used by VSCode, PyCharm, and others — is present.
         2. Check is SUPPRESS_TIMEOUT is set to True
     """
