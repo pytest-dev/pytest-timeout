@@ -6,7 +6,6 @@ useful when running tests on a continuous integration server.
 If the platform supports SIGALRM this is used to raise an exception in
 the test, otherwise os._exit(1) is used.
 """
-import inspect
 import os
 import signal
 import sys
@@ -144,9 +143,16 @@ def is_debugging():
         2. Check is SUPPRESS_TIMEOUT is set to True
     """
     global SUPPRESS_TIMEOUT
-    return SUPPRESS_TIMEOUT or any(
-        True for frame in inspect.stack() if frame[1].endswith("pydevd.py")
-    )
+    known_debugging_modules = {"pydevd"}
+    if SUPPRESS_TIMEOUT:
+        return True
+    else:
+        trace_func = sys.gettrace()
+        if trace_func:
+            for known_debugging_module in known_debugging_modules:
+                if known_debugging_module in trace_func.__module__:
+                    return True
+    return False
 
 
 SUPPRESS_TIMEOUT = False
