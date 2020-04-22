@@ -6,7 +6,6 @@ useful when running tests on a continuous integration server.
 If the platform supports SIGALRM this is used to raise an exception in
 the test, otherwise os._exit(1) is used.
 """
-import inspect
 import os
 import signal
 import sys
@@ -18,6 +17,10 @@ from distutils.version import StrictVersion
 import py
 import pytest
 
+if sys.version_info[0] < 3:
+    import __builtin__ as builtins
+else:
+    import builtins
 
 HAVE_SIGALRM = hasattr(signal, "SIGALRM")
 if HAVE_SIGALRM:
@@ -144,9 +147,19 @@ def is_debugging():
         2. Check is SUPPRESS_TIMEOUT is set to True
     """
     global SUPPRESS_TIMEOUT
-    return SUPPRESS_TIMEOUT or any(
-        True for frame in inspect.stack() if frame[1].endswith("pydevd.py")
-    )
+    std_lib_modules = {"__builtin__", "builtins", "sys"}
+    if SUPPRESS_TIMEOUT:
+        return True
+    else:
+        for possibly_hooked_function in [
+            getattr(sys, "breakpointhook", None),
+            getattr(sys, "__breakpointhook__", None),
+            getattr(builtins, "breakpoint", None),
+        ]:
+            if possibly_hooked_function:
+                if possibly_hooked_function.__module__ not in std_lib_modules:
+                    return True
+    return False
 
 
 SUPPRESS_TIMEOUT = False
