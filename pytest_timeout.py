@@ -38,6 +38,7 @@ function body, ignoring the time it takes when evaluating any fixtures
 used in the test.
 """.strip()
 
+KNOWN_DEBUGGING_MODULES = {"pydevd"}
 Settings = namedtuple("Settings", ["timeout", "method", "func_only"])
 
 
@@ -138,19 +139,18 @@ def is_debugging():
     """
     Detects if a debugging session is in progress by checking if either of
      the following conditions is true:
-        1. examining the stack frames to see if pydevd.py —
-     a debugging framework used by VSCode, PyCharm, and others — is present.
+        1. Examines the trace function to see if the module it
+     originates from is in KNOWN_DEBUGGING_MODULES
         2. Check is SUPPRESS_TIMEOUT is set to True
     """
-    global SUPPRESS_TIMEOUT
-    known_debugging_modules = {"pydevd"}
+    global SUPPRESS_TIMEOUT, KNOWN_DEBUGGING_MODULES
     if SUPPRESS_TIMEOUT:
         return True
     else:
         trace_func = sys.gettrace()
         if trace_func:
-            for known_debugging_module in known_debugging_modules:
-                if known_debugging_module in trace_func.__module__:
+            for name in KNOWN_DEBUGGING_MODULES:
+                if name in trace_func.__module__:
                     return True
     return False
 
