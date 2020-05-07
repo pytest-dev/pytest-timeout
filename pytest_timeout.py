@@ -38,7 +38,7 @@ function body, ignoring the time it takes when evaluating any fixtures
 used in the test.
 """.strip()
 
-KNOWN_DEBUGGING_MODULES = {"pydevd"}
+KNOWN_DEBUGGING_MODULES = {"pydevd", "ipdb"}
 Settings = namedtuple("Settings", ["timeout", "method", "func_only"])
 
 
