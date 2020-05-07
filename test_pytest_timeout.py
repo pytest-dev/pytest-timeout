@@ -5,6 +5,11 @@ import time
 import pexpect
 import pytest
 
+try:
+    import ipbd
+except ImportError:
+    ipbd = None
+
 pytest_plugins = "pytester"
 
 have_sigalrm = pytest.mark.skipif(
@@ -13,6 +18,7 @@ have_sigalrm = pytest.mark.skipif(
 have_spawn = pytest.mark.skipif(
     not hasattr(pexpect, "spawn"), reason="pexpect does not have spawn"
 )
+have_ipdb = pytest.mark.skipif(ipbd is None, reason="ipdb is not installed")
 
 
 @pytest.fixture
@@ -399,6 +405,30 @@ def test_suppresses_timeout_when_pdb_is_entered(testdir):
         @pytest.mark.timeout(1)
         def test_foo():
             pdb.set_trace()
+    """
+    )
+    child = testdir.spawn_pytest(str(p1))
+    child.expect("test_foo")
+    time.sleep(2)
+    child.send("c\n")
+    child.sendeof()
+    result = child.read()
+    if child.isalive():
+        child.wait()
+    assert b"Timeout >1.0s" not in result
+
+
+@have_spawn
+@have_ipdb
+def test_suppresses_timeout_when_ipdb_is_entered(testdir):
+    pytest.importorskip("pexpect")
+    p1 = testdir.makepyfile(
+        """
+        import pytest, ipdb
+
+        @pytest.mark.timeout(1)
+        def test_foo():
+            ipdb.set_trace()
     """
     )
     child = testdir.spawn_pytest(str(p1))
