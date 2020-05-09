@@ -396,47 +396,29 @@ def test_marker_help(testdir):
 
 
 @have_spawn
-def test_suppresses_timeout_when_pdb_is_entered(testdir):
-    pytest.importorskip("pexpect")
+@pytest.mark.parametrize(
+    "debugging_module,debugging_set_trace",
+    [
+        ("pbd", "set_trace"),
+        ("ipbd", "set_trace"),
+        ("pydevd", "settrace"),
+    ],  # noqa: E231
+)
+def test_suppresses_timeout_when_debugger_is_entered(
+    testdir, debugging_module, debugging_set_trace
+):
     p1 = testdir.makepyfile(
-        """
-        import pytest, pdb
+        f"""
+        import pytest, {debugging_module}
 
         @pytest.mark.timeout(1)
         def test_foo():
-            pdb.set_trace()
+            {debugging_module}.{debugging_set_trace}()
     """
     )
     child = testdir.spawn_pytest(str(p1))
     child.expect("test_foo")
     time.sleep(2)
-    child.send("c\n")
-    child.sendeof()
     result = child.read()
-    if child.isalive():
-        child.wait()
-    assert b"Timeout >1.0s" not in result
-
-
-@have_spawn
-@have_ipdb
-def test_suppresses_timeout_when_ipdb_is_entered(testdir):
-    pytest.importorskip("pexpect")
-    p1 = testdir.makepyfile(
-        """
-        import pytest, ipdb
-
-        @pytest.mark.timeout(1)
-        def test_foo():
-            ipdb.set_trace()
-    """
-    )
-    child = testdir.spawn_pytest(str(p1))
-    child.expect("test_foo")
-    time.sleep(2)
-    child.send("c\n")
-    child.sendeof()
-    result = child.read()
-    if child.isalive():
-        child.wait()
+    child.terminate(force=True)
     assert b"Timeout >1.0s" not in result

@@ -162,7 +162,6 @@ SUPPRESS_TIMEOUT = False
 def timeout_setup(item):
     """Setup up a timeout trigger and handler"""
     params = get_params(item)
-
     if params.timeout is None or params.timeout <= 0:
         return
     if params.method == "signal":
