@@ -396,21 +396,14 @@ def test_marker_help(testdir):
 
 
 @have_spawn
-@pytest.mark.parametrize(
-    "debugging_module,debugging_set_trace",
-    [
-        ("pbd", "set_trace"),
-        ("ipbd", "set_trace"),
-        ("pydevd", "settrace"),
-    ],  # noqa: E231
-)
+@pytest.mark.parametrize("debugging_module", ("pdb", "ipdb", "pydevd"))
+@pytest.mark.parametrize("debugging_module", ("set_trace", "set_trace", "settrace"))
 def test_suppresses_timeout_when_debugger_is_entered(
     testdir, debugging_module, debugging_set_trace
 ):
     p1 = testdir.makepyfile(
         f"""
         import pytest, {debugging_module}
-
         @pytest.mark.timeout(1)
         def test_foo():
             {debugging_module}.{debugging_set_trace}()
@@ -419,6 +412,9 @@ def test_suppresses_timeout_when_debugger_is_entered(
     child = testdir.spawn_pytest(str(p1))
     child.expect("test_foo")
     time.sleep(2)
+    child.send("c\n")
+    child.sendeof()
     result = child.read()
-    child.terminate(force=True)
+    if child.isalive():
+        child.terminate(force=True)
     assert b"Timeout >1.0s" not in result

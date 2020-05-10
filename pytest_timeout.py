@@ -38,7 +38,8 @@ function body, ignoring the time it takes when evaluating any fixtures
 used in the test.
 """.strip()
 
-# bdb convers pdb, ipdb, and possible others
+# bdb covers pdb, ipdb, and possibly others
+# pydevd covers PyCharm, VSCode, and possibly others
 KNOWN_DEBUGGING_MODULES = {"pydevd", "bdb"}
 Settings = namedtuple("Settings", ["timeout", "method", "func_only"])
 
