@@ -2,23 +2,13 @@ import os.path
 import signal
 import time
 
-import pexpect
 import pytest
-
-try:
-    import ipbd
-except ImportError:
-    ipbd = None
 
 pytest_plugins = "pytester"
 
 have_sigalrm = pytest.mark.skipif(
     not hasattr(signal, "SIGALRM"), reason="OS does not have SIGALRM"
 )
-have_spawn = pytest.mark.skipif(
-    not hasattr(pexpect, "spawn"), reason="pexpect does not have spawn"
-)
-have_ipdb = pytest.mark.skipif(ipbd is None, reason="ipdb is not installed")
 
 
 @pytest.fixture
@@ -395,13 +385,12 @@ def test_marker_help(testdir):
     result.stdout.fnmatch_lines(["@pytest.mark.timeout(*"])
 
 
-@have_spawn
 @pytest.mark.parametrize(
     "debugging_module,debugging_set_trace",
     [
-        ("pdb", "set_trace"),
-        ("ipdb", "set_trace"),
-        ("pydevd", "settrace"),
+        ("pdb", "set_trace()"),
+        ("ipdb", "set_trace()"),
+        ("pydevd", "settrace(port=4678)"),
     ],  # noqa: E231
 )
 def test_suppresses_timeout_when_debugger_is_entered(
@@ -410,17 +399,20 @@ def test_suppresses_timeout_when_debugger_is_entered(
     p1 = testdir.makepyfile(
         f"""
         import pytest, {debugging_module}
+
         @pytest.mark.timeout(1)
         def test_foo():
-            {debugging_module}.{debugging_set_trace}()
+            {debugging_module}.{debugging_set_trace}
     """
     )
+    # todo: pydevd server @ port 4678
     child = testdir.spawn_pytest(str(p1))
     child.expect("test_foo")
     time.sleep(2)
     child.send("c\n")
     child.sendeof()
-    result = child.read()
+    result = child.read().decode().lower()
     if child.isalive():
         child.terminate(force=True)
-    assert b"Timeout >1.0s" not in result
+    assert "timeout >1.0s" not in result
+    assert "fail" not in result
