@@ -396,8 +396,14 @@ def test_marker_help(testdir):
 
 
 @have_spawn
-@pytest.mark.parametrize("debugging_module", ("pdb", "ipdb", "pydevd"))
-@pytest.mark.parametrize("debugging_module", ("set_trace", "set_trace", "settrace"))
+@pytest.mark.parametrize(
+    "debugging_module,debugging_set_trace",
+    [
+        ("pdb", "set_trace"),
+        ("ipdb", "set_trace"),
+        ("pydevd", "settrace"),
+    ],  # noqa: E231
+)
 def test_suppresses_timeout_when_debugger_is_entered(
     testdir, debugging_module, debugging_set_trace
 ):
