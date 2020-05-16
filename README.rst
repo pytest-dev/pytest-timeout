@@ -22,7 +22,7 @@ time.  This is useful when running tests under a continuous
 integration server or simply if you don't know why the test suite
 hangs.
 
-Note that while by default on POSIX systems py.test will continue to
+Note that while by default on POSIX systems pytest will continue to
 execute the tests after a test has timed, out this is not always
 possible.  Often the only sure way to interrupt a hanging test is by
 terminating the entire process.  As this is a hard termination
@@ -47,7 +47,7 @@ Install is as simple as e.g.::
 Now you can run tests using a timeout, in seconds, after which they
 will be terminated::
 
-   py.test --timeout=300
+   pytest --timeout=300
 
 Alternatively you can mark individual tests as having a timeout::
 
@@ -60,7 +60,7 @@ valid timeout for the plugin to interrupt long-running tests.  A
 timeout is always specified as a number of seconds, and can be
 defined in a number of ways, from low to high priority:
 
-1. You can set a global timeout in the `py.test configuration file`__
+1. You can set a global timeout in the `pytest configuration file`__
    using the ``timeout`` option.  E.g.::
 
       [pytest]
@@ -111,7 +111,7 @@ this timer thread is cancelled and the test run continues.
 
 The downsides of this method are that there is a relatively large
 overhead for running each test and that test runs are not completed.
-This means that other py.test features, like e.g. JUnit XML output or
+This means that other pytest features, like e.g. JUnit XML output or
 fixture teardown, will not function normally.  The second issue might
 be alleviated by using the ``--boxed`` option of the pytest-xdist_
 plugin.
@@ -131,7 +131,7 @@ starts and cancels it when it finishes.  If the alarm expires during
 the test the signal handler will dump the stack of any other threads
 running to stderr and use ``pytest.fail()`` to interrupt the test.
 
-The benefit of this method is that the py.test process is not
+The benefit of this method is that the pytest process is not
 terminated and the test run can complete normally.
 
 The main issue to look out for with this method is that it may
@@ -143,7 +143,7 @@ Specifying the Timeout Method
 -----------------------------
 
 The timeout method can be specified by using the ``timeout_method``
-option in the `py.test configuration file`__, the ``--timeout_method``
+option in the `pytest configuration file`__, the ``--timeout_method``
 command line parameter or the ``timeout`` marker_.  Simply set their
 value to the string ``thread`` or ``signal`` to override the default
 method.  On a marker this is done using the ``method`` keyword::
