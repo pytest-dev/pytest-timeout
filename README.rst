@@ -23,7 +23,7 @@ integration server or simply if you don't know why the test suite
 hangs.
 
 Note that while by default on POSIX systems pytest will continue to
-execute the tests after a test has timed, out this is not always
+execute the tests after a test has timed out, this is not always
 possible.  Often the only sure way to interrupt a hanging test is by
 terminating the entire process.  As this is a hard termination
 (``os._exit()``) it will result in no teardown, JUnit XML output etc.
