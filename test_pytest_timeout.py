@@ -389,7 +389,14 @@ def test_marker_help(testdir):
     "debugging_module,debugging_set_trace",
     [
         ("pdb", "set_trace()"),
-        ("ipdb", "set_trace()"),
+        pytest.param(
+            "ipdb",
+            "set_trace()",
+            marks=pytest.mark.xfail(
+                reason="waiting on https://github.com/pytest-dev/pytest/pull/7207"
+                " to allow proper testing"
+            ),
+        ),
         pytest.param(
             "pydevd",
             "settrace(port=4678)",
