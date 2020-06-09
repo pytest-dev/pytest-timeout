@@ -414,9 +414,10 @@ def test_suppresses_timeout_when_debugger_is_entered(
         @pytest.mark.timeout(1)
         def test_foo():
             {debugging_module}.{debugging_set_trace}
-    """.format(debugging_module=debugging_module, debugging_set_trace=debugging_set_trace)
+    """.format(
+            debugging_module=debugging_module, debugging_set_trace=debugging_set_trace
+        )
     )
-    # todo: pydevd server @ port 4678
     child = testdir.spawn_pytest(str(p1))
     child.expect("test_foo")
     time.sleep(2)
