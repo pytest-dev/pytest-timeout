@@ -2,12 +2,16 @@ import os.path
 import signal
 import time
 
+import pexpect
 import pytest
 
 pytest_plugins = "pytester"
 
 have_sigalrm = pytest.mark.skipif(
     not hasattr(signal, "SIGALRM"), reason="OS does not have SIGALRM"
+)
+have_spawn = pytest.mark.skipif(
+    not hasattr(pexpect, "spawn"), reason="pexpect does not have spawn"
 )
 
 
@@ -386,7 +390,7 @@ def test_marker_help(testdir):
 
 
 @pytest.mark.parametrize(
-    "debugging_module,debugging_set_trace",
+    ["debugging_module", "debugging_set_trace"],
     [
         ("pdb", "set_trace()"),
         pytest.param(
@@ -404,6 +408,7 @@ def test_marker_help(testdir):
         ),
     ],
 )
+@have_spawn
 def test_suppresses_timeout_when_debugger_is_entered(
     testdir, debugging_module, debugging_set_trace
 ):
