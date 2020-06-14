@@ -171,12 +171,11 @@ def is_debugging():
     global SUPPRESS_TIMEOUT, KNOWN_DEBUGGING_MODULES
     if SUPPRESS_TIMEOUT:
         return True
-    else:
-        trace_func = sys.gettrace()
-        if trace_func:
-            for name in KNOWN_DEBUGGING_MODULES:
-                if name in trace_func.__module__:
-                    return True
+    trace_func = sys.gettrace()
+    if trace_func:
+        for name in KNOWN_DEBUGGING_MODULES:
+            if name in trace_func.__module__:
+                return True
     return False
 
 
