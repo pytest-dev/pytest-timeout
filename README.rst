@@ -16,21 +16,28 @@ pytest-timeout
 .. |python| image:: https://img.shields.io/pypi/pyversions/pytest-timeout.svg
   :target: https://pypi.python.org/pypi/pytest-timeout/
 
-This is a plugin which will terminate tests after a certain timeout.
-When doing so it will show a stack dump of all threads running at the
-time.  This is useful when running tests under a continuous
-integration server or simply if you don't know why the test suite
-hangs.
+This is a plugin which will terminate tests after a certain timeout,
+assuming the test session isn't being debugged. When aborting a test
+it will show a stack dump of all threads running at the time.
+This is useful when running tests under a continuous
+integration server or simply if you don't know why the test suite hangs.
 
-Note that while by default on POSIX systems pytest will continue to
-execute the tests after a test has timed out, this is not always
-possible.  Often the only sure way to interrupt a hanging test is by
-terminating the entire process.  As this is a hard termination
-(``os._exit()``) it will result in no teardown, JUnit XML output etc.
-But the plugin will ensure you will have the debugging output on
-stderr nevertheless, which is the most important part at this stage.
-See below for detailed information on the timeout methods and their
-side-effects.
+.. note::
+    The way this plugin detects whether or not a debugging session is active
+    is by checking if a trace function is set and if one is, it check to see
+    if the module it belongs to is present in a set of known debugging
+    frameworks modules OR if pytest itself drops you into a pbd session.
+
+.. note::
+    While by default on POSIX systems pytest will continue to
+    execute the tests after a test has timed out this is not always
+    possible.  Often the only sure way to interrupt a hanging test is by
+    terminating the entire process.  As this is a hard termination
+    (``os._exit()``) it will result in no teardown, JUnit XML output etc.
+    But the plugin will ensure you will have the debugging output on
+    stderr nevertheless, which is the most important part at this stage.
+    See below for detailed information on the timeout methods and their
+    side-effects.
 
 The pytest-timeout plugin has been tested on python 2.7 or higher,
 including 3.X, pypy and pypy3.  See tox.ini for currently tested
@@ -191,6 +198,11 @@ might result in clearer output.
 Changelog
 =========
 
+1.4.0
+-----
+
+- Better detection of when we are debugging, thanks Mattwmaster58
+
 1.3.4
 -----
 
@@ -253,9 +265,9 @@ Changelog
 -----
 
 * Bump version to 1.0 to commit to semantic versioning.
-* Fix issue #12: Now compatible with py.test 2.8, thanks Holger Krekel.
+* Fix issue #12: Now compatible with pytest 2.8, thanks Holger Krekel.
 * No longer test with pexpect on py26 as it is no longer supported
-* Require py.test 2.8 and use new hookimpl decorator
+* Require pytest 2.8 and use new hookimpl decorator
 
 0.5
 ---
@@ -273,7 +285,7 @@ Changelog
 * Support timeouts happening in (session scoped) finalizers.
 
 * Change command line option --timeout_method into --timeout-method
-  for consistency with py.test
+  for consistency with pytest
 
 0.3
 ---

@@ -38,6 +38,9 @@ function body, ignoring the time it takes when evaluating any fixtures
 used in the test.
 """.strip()
 
+# bdb covers pdb, ipdb, and possibly others
+# pydevd covers PyCharm, VSCode, and possibly others
+KNOWN_DEBUGGING_MODULES = {"pydevd", "bdb"}
 Settings = namedtuple("Settings", ["timeout", "method", "func_only"])
 
 
@@ -132,6 +135,28 @@ def pytest_enter_pdb():
     # need another way to signify that the timeout should not be performed.
     global SUPPRESS_TIMEOUT
     SUPPRESS_TIMEOUT = True
+
+
+def is_debugging():
+    """Detects if a debugging session is in progress.
+
+     This is done by checking if either of the following conditions is
+     true:
+
+     1. Examines the trace function to see if the module it originates
+        from is in KNOWN_DEBUGGING_MODULES
+     2. Check is SUPPRESS_TIMEOUT is set to True
+    """
+    global SUPPRESS_TIMEOUT, KNOWN_DEBUGGING_MODULES
+    if SUPPRESS_TIMEOUT:
+        return True
+    else:
+        trace_func = sys.gettrace()
+        if trace_func:
+            for name in KNOWN_DEBUGGING_MODULES:
+                if name in trace_func.__module__:
+                    return True
+    return False
 
 
 SUPPRESS_TIMEOUT = False
@@ -311,7 +336,7 @@ def timeout_sigalrm(item, timeout):
     current to stderr and then raise an AssertionError, thus
     terminating the test.
     """
-    if SUPPRESS_TIMEOUT:
+    if is_debugging():
         return
     __tracebackhide__ = True
     nthreads = len(threading.enumerate())
@@ -329,7 +354,7 @@ def timeout_timer(item, timeout):
     This disables the capturemanager and dumps stdout and stderr.
     Then the stacks are dumped and os._exit(1) is called.
     """
-    if SUPPRESS_TIMEOUT:
+    if is_debugging():
         return
     try:
         capman = item.config.pluginmanager.getplugin("capturemanager")

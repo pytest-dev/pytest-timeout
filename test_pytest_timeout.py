@@ -389,24 +389,47 @@ def test_marker_help(testdir):
     result.stdout.fnmatch_lines(["@pytest.mark.timeout(*"])
 
 
+@pytest.mark.parametrize(
+    ["debugging_module", "debugging_set_trace"],
+    [
+        ("pdb", "set_trace()"),
+        pytest.param(
+            "ipdb",
+            "set_trace()",
+            marks=pytest.mark.xfail(
+                reason="waiting on https://github.com/pytest-dev/pytest/pull/7207"
+                " to allow proper testing"
+            ),
+        ),
+        pytest.param(
+            "pydevd",
+            "settrace(port=4678)",
+            marks=pytest.mark.xfail(reason="in need of way to setup pydevd server"),
+        ),
+    ],
+)
 @have_spawn
-def test_suppresses_timeout_when_pdb_is_entered(testdir):
-    pytest.importorskip("pexpect")
+def test_suppresses_timeout_when_debugger_is_entered(
+    testdir, debugging_module, debugging_set_trace
+):
     p1 = testdir.makepyfile(
         """
-        import pytest, pdb
+        import pytest, {debugging_module}
 
         @pytest.mark.timeout(1)
         def test_foo():
-            pdb.set_trace()
-    """
+            {debugging_module}.{debugging_set_trace}
+    """.format(
+            debugging_module=debugging_module, debugging_set_trace=debugging_set_trace
+        )
     )
     child = testdir.spawn_pytest(str(p1))
     child.expect("test_foo")
     time.sleep(2)
     child.send("c\n")
     child.sendeof()
-    result = child.read()
+    result = child.read().decode().lower()
     if child.isalive():
-        child.wait()
-    assert b"Timeout >1.0s" not in result
+        child.terminate(force=True)
+    assert "timeout >1.0s" not in result
+    assert "fail" not in result
