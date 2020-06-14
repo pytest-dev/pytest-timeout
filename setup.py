@@ -1,3 +1,4 @@
+"""Setuptools install script for pytest-timeout."""
 import io
 
 from setuptools import setup

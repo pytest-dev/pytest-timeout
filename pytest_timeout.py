@@ -1,4 +1,4 @@
-"""Timeout for tests to stop hanging testruns
+"""Timeout for tests to stop hanging testruns.
 
 This plugin will dump the stack and terminate the test.  This can be
 useful when running tests on a continuous integration server.
@@ -46,7 +46,7 @@ Settings = namedtuple("Settings", ["timeout", "method", "func_only"])
 
 @pytest.hookimpl
 def pytest_addoption(parser):
-    """Add options to control the timeout plugin"""
+    """Add options to control the timeout plugin."""
     group = parser.getgroup(
         "timeout",
         "Interrupt test run and dump stacks of all threads after a test times out",
@@ -72,7 +72,7 @@ def pytest_addoption(parser):
 
 @pytest.hookimpl
 def pytest_configure(config):
-    # Register the marker so it shows up in --markers output.
+    """Register the marker so it shows up in --markers output."""
     config.addinivalue_line(
         "markers",
         "timeout(timeout, method=None, func_only=False): Set a timeout, timeout "
@@ -92,6 +92,12 @@ def pytest_configure(config):
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_protocol(item):
+    """Hook in timeouts to the runtest protocol.
+
+    If the timeout is set on the entire test, including setup and
+    teardown, then this hook installs the timeout.  Otherwise
+    pytest_runtest_call is used.
+    """
     func_only = get_func_only_setting(item)
     if func_only is False:
         timeout_setup(item)
@@ -102,6 +108,11 @@ def pytest_runtest_protocol(item):
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_call(item):
+    """Hook in timeouts to the test function call only.
+
+    If the timeout is set on only the test function this hook installs
+    the timeout, otherwise pytest_runtest_protocol is used.
+    """
     func_only = get_func_only_setting(item)
     if func_only is True:
         timeout_setup(item)
@@ -112,6 +123,7 @@ def pytest_runtest_call(item):
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_report_header(config):
+    """Add timeout config to pytest header."""
     if config._env_timeout:
         return [
             "timeout: %ss\ntimeout method: %s\ntimeout func_only: %s"
@@ -125,11 +137,17 @@ def pytest_report_header(config):
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_exception_interact(node):
+    """Stop the timeout when pytest enters pdb in post-mortem mode."""
     timeout_teardown(node)
 
 
 @pytest.hookimpl
 def pytest_enter_pdb():
+    """Stop the timeouts when we entered pdb.
+
+    This stops timeouts from triggering when pytest's builting pdb
+    support notices we entered pdb.
+    """
     # Since pdb.set_trace happens outside of any pytest control, we don't have
     # any pytest ``item`` here, so we cannot use timeout_teardown. Thus, we
     # need another way to signify that the timeout should not be performed.
@@ -138,7 +156,10 @@ def pytest_enter_pdb():
 
 
 def is_debugging():
-    """Detects if a debugging session is in progress.
+    """Detect if a debugging session is in progress.
+
+    This looks at both pytest's builtin pdb support as well as
+    externally installed debuggers using some heuristics.
 
      This is done by checking if either of the following conditions is
      true:
@@ -163,7 +184,7 @@ SUPPRESS_TIMEOUT = False
 
 
 def timeout_setup(item):
-    """Setup up a timeout trigger and handler"""
+    """Setup up a timeout trigger and handler."""
     params = get_params(item)
     if params.timeout is None or params.timeout <= 0:
         return
@@ -193,7 +214,7 @@ def timeout_setup(item):
 
 
 def timeout_teardown(item):
-    """Cancel the timeout trigger if it was set"""
+    """Cancel the timeout trigger if it was set."""
     # When skipping is raised from a pytest_runtest_setup function
     # (as is the case when using the pytest.mark.skipif marker) we
     # may be called without our setup counterpart having been
@@ -204,6 +225,10 @@ def timeout_teardown(item):
 
 
 def get_env_settings(config):
+    """Return the configured timeout settings.
+
+    This looks up the settings in the environment and config file.
+    """
     timeout = config.getvalue("timeout")
     if timeout is None:
         timeout = _validate_timeout(
@@ -232,7 +257,7 @@ def get_env_settings(config):
 
 
 def get_func_only_setting(item):
-    """Return the func_only setting for an item"""
+    """Return the func_only setting for an item."""
     func_only = None
     marker = item.get_closest_marker("timeout")
     if marker:
@@ -246,7 +271,7 @@ def get_func_only_setting(item):
 
 
 def get_params(item, marker=None):
-    """Return (timeout, method) for an item"""
+    """Return (timeout, method) for an item."""
     timeout = method = func_only = None
     if not marker:
         marker = item.get_closest_marker("timeout")
@@ -265,7 +290,7 @@ def get_params(item, marker=None):
 
 
 def _parse_marker(marker):
-    """Return (timeout, method) tuple from marker
+    """Return (timeout, method) tuple from marker.
 
     Either could be None.  The values are not interpreted, so
     could still be bogus and even the wrong type.
@@ -302,7 +327,6 @@ def _parse_marker(marker):
 
 
 def _validate_timeout(timeout, where):
-    """Helper for get_params()"""
     if timeout is None:
         return None
     try:
@@ -312,7 +336,6 @@ def _validate_timeout(timeout, where):
 
 
 def _validate_method(method, where):
-    """Helper for get_params()"""
     if method is None:
         return None
     if method not in ["signal", "thread"]:
@@ -321,7 +344,6 @@ def _validate_method(method, where):
 
 
 def _validate_func_only(func_only, where):
-    """Helper for get_params()"""
     if func_only is None:
         return False
     if not isinstance(func_only, bool):
@@ -330,7 +352,7 @@ def _validate_func_only(func_only, where):
 
 
 def timeout_sigalrm(item, timeout):
-    """Dump stack of threads and raise an exception
+    """Dump stack of threads and raise an exception.
 
     This will output the stacks of any threads other then the
     current to stderr and then raise an AssertionError, thus
@@ -349,7 +371,7 @@ def timeout_sigalrm(item, timeout):
 
 
 def timeout_timer(item, timeout):
-    """Dump stack of threads and call os._exit()
+    """Dump stack of threads and call os._exit().
 
     This disables the capturemanager and dumps stdout and stderr.
     Then the stacks are dumped and os._exit(1) is called.
@@ -391,7 +413,7 @@ def timeout_timer(item, timeout):
 
 
 def dump_stacks():
-    """Dump the stacks of all threads except the current thread"""
+    """Dump the stacks of all threads except the current thread."""
     current_ident = threading.current_thread().ident
     for thread_ident, frame in sys._current_frames().items():
         if thread_ident == current_ident:
@@ -407,7 +429,7 @@ def dump_stacks():
 
 
 def write_title(title, stream=None, sep="~"):
-    """Write a section title
+    """Write a section title.
 
     If *stream* is None sys.stderr will be used, *sep* is used to
     draw the line.
@@ -423,7 +445,7 @@ def write_title(title, stream=None, sep="~"):
 
 
 def write(text, stream=None):
-    """Write text to stream
+    """Write text to stream.
 
     Pretty stupid really, only here for symetry with .write_title().
     """
