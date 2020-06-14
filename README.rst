@@ -23,21 +23,24 @@ This is useful when running tests under a continuous
 integration server or simply if you don't know why the test suite hangs.
 
 .. note::
-    The way this plugin detects whether or not a debugging session is active
-    is by checking if a trace function is set and if one is, it check to see
-    if the module it belongs to is present in a set of known debugging
-    frameworks modules OR if pytest itself drops you into a pbd session.
+
+   The way this plugin detects whether or not a debugging session is
+   active is by checking if a trace function is set and if one is, it
+   check to see if the module it belongs to is present in a set of
+   known debugging frameworks modules OR if pytest itself drops you
+   into a pbd session.
 
 .. note::
-    While by default on POSIX systems pytest will continue to
-    execute the tests after a test has timed out this is not always
-    possible.  Often the only sure way to interrupt a hanging test is by
-    terminating the entire process.  As this is a hard termination
-    (``os._exit()``) it will result in no teardown, JUnit XML output etc.
-    But the plugin will ensure you will have the debugging output on
-    stderr nevertheless, which is the most important part at this stage.
-    See below for detailed information on the timeout methods and their
-    side-effects.
+
+   While by default on POSIX systems pytest will continue to execute
+   the tests after a test has timed out this is not always possible.
+   Often the only sure way to interrupt a hanging test is by
+   terminating the entire process.  As this is a hard termination
+   (``os._exit()``) it will result in no teardown, JUnit XML output
+   etc.  But the plugin will ensure you will have the debugging output
+   on stderr nevertheless, which is the most important part at this
+   stage.  See below for detailed information on the timeout methods
+   and their side-effects.
 
 The pytest-timeout plugin has been tested on python 2.7 or higher,
 including 3.X, pypy and pypy3.  See tox.ini for currently tested
