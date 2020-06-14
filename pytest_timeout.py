@@ -138,12 +138,14 @@ def pytest_enter_pdb():
 
 
 def is_debugging():
-    """
-    Detects if a debugging session is in progress by checking if either of
-     the following conditions is true:
-        1. Examines the trace function to see if the module it
-     originates from is in KNOWN_DEBUGGING_MODULES
-        2. Check is SUPPRESS_TIMEOUT is set to True
+    """Detects if a debugging session is in progress.
+
+     This is done by checking if either of the following conditions is
+     true:
+
+     1. Examines the trace function to see if the module it originates
+        from is in KNOWN_DEBUGGING_MODULES
+     2. Check is SUPPRESS_TIMEOUT is set to True
     """
     global SUPPRESS_TIMEOUT, KNOWN_DEBUGGING_MODULES
     if SUPPRESS_TIMEOUT:
