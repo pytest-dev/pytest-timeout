@@ -6,6 +6,7 @@ useful when running tests on a continuous integration server.
 If the platform supports SIGALRM this is used to raise an exception in
 the test, otherwise os._exit(1) is used.
 """
+import inspect
 import os
 import signal
 import sys
@@ -165,16 +166,16 @@ def is_debugging():
      true:
 
      1. Examines the trace function to see if the module it originates
-        from is in KNOWN_DEBUGGING_MODULES
-     2. Check is SUPPRESS_TIMEOUT is set to True
+        from is in KNOWN_DEBUGGING_MODULES.
+     2. Check is SUPPRESS_TIMEOUT is set to True.
     """
     global SUPPRESS_TIMEOUT, KNOWN_DEBUGGING_MODULES
     if SUPPRESS_TIMEOUT:
         return True
     trace_func = sys.gettrace()
-    if trace_func:
+    if trace_func and inspect.getmodule(trace_func):
         for name in KNOWN_DEBUGGING_MODULES:
-            if name in trace_func.__module__:
+            if name in inspect.getmodule(trace_func):
                 return True
     return False
 

@@ -201,10 +201,15 @@ might result in clearer output.
 Changelog
 =========
 
+1.4.1
+-----
+
+- Fix coverage compatibility which was broken by 1.4.0.
+
 1.4.0
 -----
 
-- Better detection of when we are debugging, thanks Mattwmaster58
+- Better detection of when we are debugging, thanks Mattwmaster58.
 
 1.3.4
 -----

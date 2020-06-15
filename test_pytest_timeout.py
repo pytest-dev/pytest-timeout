@@ -1,5 +1,6 @@
 import os.path
 import signal
+import sys
 import time
 
 import pexpect
@@ -60,6 +61,33 @@ def test_thread(testdir):
     """
     )
     result = testdir.runpytest("--timeout=1", "--timeout-method=thread")
+    result.stderr.fnmatch_lines(
+        [
+            "*++ Timeout ++*",
+            "*~~ Stack of MainThread* ~~*",
+            "*File *, line *, in *",
+            "*++ Timeout ++*",
+        ]
+    )
+    assert "++ Timeout ++" in result.stderr.lines[-1]
+
+
+@pytest.mark.skipif(
+    hasattr(sys, "pypy_version_info"), reason="pypy coverage seems broken currently"
+)
+def test_cov(testdir):
+    # This test requires pytest-cov
+    testdir.makepyfile(
+        """
+        import time
+
+        def test_foo():
+            time.sleep(2)
+    """
+    )
+    result = testdir.runpytest(
+        "--timeout=1", "--cov=test_cov.py", "--timeout-method=thread"
+    )
     result.stderr.fnmatch_lines(
         [
             "*++ Timeout ++*",
