@@ -31,9 +31,9 @@ def test_header(testdir):
         def test_x(): pass
     """
     )
-    result = testdir.runpytest("--timeout=1")
+    result = testdir.runpytest("--timeout=0.01")
     result.stdout.fnmatch_lines(
-        ["timeout: 1.0s", "timeout method:*", "timeout func_only:*"]
+        ["timeout: 0.01s", "timeout method:*", "timeout func_only:*"]
     )
 
 
@@ -47,8 +47,8 @@ def test_sigalrm(testdir):
             time.sleep(2)
      """
     )
-    result = testdir.runpytest("--timeout=1.5")
-    result.stdout.fnmatch_lines(["*Failed: Timeout >1.5s*"])
+    result = testdir.runpytest("--timeout=0.01")
+    result.stdout.fnmatch_lines(["*Failed: Timeout >0.01s*"])
 
 
 def test_thread(testdir):
@@ -60,7 +60,7 @@ def test_thread(testdir):
             time.sleep(2)
     """
     )
-    result = testdir.runpytest("--timeout=1", "--timeout-method=thread")
+    result = testdir.runpytest("--timeout=0.01", "--timeout-method=thread")
     result.stderr.fnmatch_lines(
         [
             "*++ Timeout ++*",
@@ -86,7 +86,7 @@ def test_cov(testdir):
     """
     )
     result = testdir.runpytest(
-        "--timeout=1", "--cov=test_cov.py", "--timeout-method=thread"
+        "--timeout=0.01", "--cov=test_cov.py", "--timeout-method=thread"
     )
     result.stderr.fnmatch_lines(
         [
@@ -108,7 +108,7 @@ def test_timeout_env(testdir, monkeypatch):
             time.sleep(2)
     """
     )
-    monkeypatch.setitem(os.environ, "PYTEST_TIMEOUT", "1")
+    monkeypatch.setitem(os.environ, "PYTEST_TIMEOUT", "0.01")
     result = testdir.runpytest()
     assert result.ret > 0
 
@@ -150,7 +150,7 @@ def test_fix_setup(meth, scope, testdir):
             scope=scope
         )
     )
-    result = testdir.runpytest("--timeout=1", "--timeout-method={}".format(meth))
+    result = testdir.runpytest("--timeout=0.01", "--timeout-method={}".format(meth))
     assert result.ret > 0
     assert "Timeout" in result.stdout.str() + result.stderr.str()
 
@@ -164,14 +164,14 @@ def test_fix_setup_func_only(testdir):
 
             @pytest.fixture
             def fix(self):
-                time.sleep(2)
+                time.sleep(0.1)
 
             @pytest.mark.timeout(func_only=True)
             def test_foo(self, fix):
                 pass
     """
     )
-    result = testdir.runpytest("--timeout=1")
+    result = testdir.runpytest("--timeout=0.01")
     assert result.ret == 0
     assert "Timeout" not in result.stdout.str() + result.stderr.str()
 
@@ -197,7 +197,7 @@ def test_fix_finalizer(meth, scope, testdir):
                 pass
     """
     )
-    result = testdir.runpytest("--timeout=1", "-s", "--timeout-method={}".format(meth))
+    result = testdir.runpytest("--timeout=0.01", "-s", "--timeout-method={}".format(meth))
     assert result.ret > 0
     assert "Timeout" in result.stdout.str() + result.stderr.str()
 
@@ -214,7 +214,7 @@ def test_fix_finalizer_func_only(testdir):
                 print('fix setup')
                 def fin():
                     print('fix finaliser')
-                    time.sleep(2)
+                    time.sleep(0.1)
                 request.addfinalizer(fin)
 
             @pytest.mark.timeout(func_only=True)
@@ -222,7 +222,7 @@ def test_fix_finalizer_func_only(testdir):
                 pass
     """
     )
-    result = testdir.runpytest("--timeout=1", "-s")
+    result = testdir.runpytest("--timeout=0.01", "-s")
     assert result.ret == 0
     assert "Timeout" not in result.stdout.str() + result.stderr.str()
 
@@ -233,14 +233,14 @@ def test_timeout_mark_sigalrm(testdir):
         """
         import time, pytest
 
-        @pytest.mark.timeout(1)
+        @pytest.mark.timeout(0.01)
         def test_foo():
             time.sleep(2)
             assert False
     """
     )
     result = testdir.runpytest()
-    result.stdout.fnmatch_lines(["*Failed: Timeout >1.0s*"])
+    result.stdout.fnmatch_lines(["*Failed: Timeout >0.01s*"])
 
 
 def test_timeout_mark_timer(testdir):
@@ -248,7 +248,7 @@ def test_timeout_mark_timer(testdir):
         """
         import time, pytest
 
-        @pytest.mark.timeout(1)
+        @pytest.mark.timeout(0.01)
         def test_foo():
             time.sleep(2)
     """
@@ -262,7 +262,7 @@ def test_timeout_mark_non_int(testdir):
         """
      import time, pytest
 
-     @pytest.mark.timeout(0.5)
+     @pytest.mark.timeout(0.01)
      def test_foo():
          time.sleep(1)
     """
@@ -304,7 +304,7 @@ def test_timeout_mark_method_nokw(testdir):
         """
         import time, pytest
 
-        @pytest.mark.timeout(1, 'thread')
+        @pytest.mark.timeout(0.01, 'thread')
         def test_foo():
             time.sleep(2)
     """
@@ -339,7 +339,7 @@ def test_ini_timeout(testdir):
     testdir.makeini(
         """
         [pytest]
-        timeout = 1.5
+        timeout = 0.01
     """
     )
     result = testdir.runpytest()
@@ -353,7 +353,7 @@ def test_ini_timeout_func_only(testdir):
 
         @pytest.fixture
         def slow():
-            time.sleep(2)
+            time.sleep(0.1)
 
         def test_foo(slow):
             pass
@@ -362,7 +362,7 @@ def test_ini_timeout_func_only(testdir):
     testdir.makeini(
         """
         [pytest]
-        timeout = 1.5
+        timeout = 0.01
         timeout_func_only = true
     """
     )
@@ -382,7 +382,7 @@ def test_ini_method(testdir):
     testdir.makeini(
         """
         [pytest]
-        timeout = 1
+        timeout = 0.01
         timeout_method = thread
     """
     )
@@ -395,19 +395,18 @@ def test_timeout_marker_inheritance(testdir):
         """
         import time, pytest
 
-        @pytest.mark.timeout(timeout=2)
+        @pytest.mark.timeout(timeout=0.05)
         class TestFoo:
 
-            @pytest.mark.timeout(timeout=3)
+            @pytest.mark.timeout(timeout=0.5)
             def test_foo_2(self):
-                time.sleep(2)
+                time.sleep(0.1)
 
-            @pytest.mark.timeout(timeout=3)
             def test_foo_1(self):
-                time.sleep(1)
+                time.sleep(0.01)
     """
     )
-    result = testdir.runpytest("--timeout=1", "-s")
+    result = testdir.runpytest("--timeout=0.01", "-s")
     assert result.ret == 0
     assert "Timeout" not in result.stdout.str() + result.stderr.str()
 
@@ -444,7 +443,7 @@ def test_suppresses_timeout_when_debugger_is_entered(
         """
         import pytest, {debugging_module}
 
-        @pytest.mark.timeout(1)
+        @pytest.mark.timeout(0.01)
         def test_foo():
             {debugging_module}.{debugging_set_trace}
     """.format(
@@ -459,5 +458,5 @@ def test_suppresses_timeout_when_debugger_is_entered(
     result = child.read().decode().lower()
     if child.isalive():
         child.terminate(force=True)
-    assert "timeout >1.0s" not in result
+    assert "timeout >0.01s" not in result
     assert "fail" not in result
