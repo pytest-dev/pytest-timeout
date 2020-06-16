@@ -443,7 +443,7 @@ def test_suppresses_timeout_when_debugger_is_entered(
         """
         import pytest, {debugging_module}
 
-        @pytest.mark.timeout(0.01)
+        @pytest.mark.timeout(0.1)
         def test_foo():
             {debugging_module}.{debugging_set_trace}
     """.format(
@@ -452,7 +452,7 @@ def test_suppresses_timeout_when_debugger_is_entered(
     )
     child = testdir.spawn_pytest(str(p1))
     child.expect("test_foo")
-    time.sleep(2)
+    time.sleep(0.2)
     child.send("c\n")
     child.sendeof()
     result = child.read().decode().lower()
