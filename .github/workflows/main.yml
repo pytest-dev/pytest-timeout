@@ -16,6 +16,9 @@ jobs:
             tox_env: "py36"
           - v: "3.7"
             tox_env: "py37"
+          - v: "3.7"
+            tox_env: "py37"
+            pre_releases: "--pre"
           - v: "3.8"
             tox_env: "py38"
           - v: "pypy2"
@@ -35,4 +38,4 @@ jobs:
           pip install -U setuptools tox
       - name: Test
         run: |
-          tox -e ${{ matrix.python.tox_env }}
+          tox -e ${{ matrix.python.tox_env }} ${{ matrix.python.pre_releases }}
