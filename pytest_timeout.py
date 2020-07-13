@@ -13,7 +13,7 @@ import sys
 import threading
 import traceback
 from collections import namedtuple
-from distutils.version import StrictVersion
+from distutils.version import LooseVersion
 
 import py
 import pytest
@@ -381,8 +381,8 @@ def timeout_timer(item, timeout):
     try:
         capman = item.config.pluginmanager.getplugin("capturemanager")
         if capman:
-            pytest_version = StrictVersion(pytest.__version__)
-            if pytest_version >= StrictVersion("3.7.3"):
+            pytest_version = LooseVersion(pytest.__version__)
+            if pytest_version >= LooseVersion("3.7.3"):
                 capman.suspend_global_capture(item)
                 stdout, stderr = capman.read_global_capture()
             else:
