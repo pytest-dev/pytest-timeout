@@ -201,6 +201,11 @@ might result in clearer output.
 Changelog
 =========
 
+1.4.2
+-----
+
+- Fix compatibility when run with pytest pre-releases.
+
 1.4.1
 -----
 
