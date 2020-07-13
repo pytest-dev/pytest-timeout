@@ -462,3 +462,24 @@ def test_suppresses_timeout_when_debugger_is_entered(
         child.terminate(force=True)
     assert "timeout >0.01s" not in result
     assert "fail" not in result
+
+
+def test_is_debugging(monkeypatch):
+    import pytest_timeout
+
+    assert not pytest_timeout.is_debugging()
+
+    # create a fake module named "custom.pydevd" with a trace function on it
+    from types import ModuleType
+
+    module_name = "custom.pydevd"
+    module = ModuleType(module_name)
+    monkeypatch.setitem(sys.modules, module_name, module)
+
+    def custom_trace(*args):
+        pass
+
+    custom_trace.__module__ = module_name
+    module.custom_trace = custom_trace
+
+    assert pytest_timeout.is_debugging(custom_trace)
