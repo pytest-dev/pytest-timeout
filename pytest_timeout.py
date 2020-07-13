@@ -156,7 +156,7 @@ def pytest_enter_pdb():
     SUPPRESS_TIMEOUT = True
 
 
-def is_debugging():
+def is_debugging(trace_func=None):
     """Detect if a debugging session is in progress.
 
     This looks at both pytest's builtin pdb support as well as
@@ -168,14 +168,19 @@ def is_debugging():
      1. Examines the trace function to see if the module it originates
         from is in KNOWN_DEBUGGING_MODULES.
      2. Check is SUPPRESS_TIMEOUT is set to True.
+
+    :param trace_func: the current trace function, if not given will use
+        sys.gettrace(). Used to unit-test this function.
     """
     global SUPPRESS_TIMEOUT, KNOWN_DEBUGGING_MODULES
     if SUPPRESS_TIMEOUT:
         return True
-    trace_func = sys.gettrace()
+    if trace_func is None:
+        trace_func = sys.gettrace()
     if trace_func and inspect.getmodule(trace_func):
+        parts = inspect.getmodule(trace_func).__name__.split(".")
         for name in KNOWN_DEBUGGING_MODULES:
-            if name in inspect.getmodule(trace_func):
+            if name in parts:
                 return True
     return False
 
