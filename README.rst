@@ -204,8 +204,9 @@ Changelog
 1.4.2
 -----
 
-- Fix compatibility when run with pytest pre-releases.
-- Fix detection of third-party debuggers.
+- Fix compatibility when run with pytest pre-releases, thanks
+  Bruno Oliveira,
+- Fix detection of third-party debuggers, thanks Bruno Oliveira.
 
 1.4.1
 -----
