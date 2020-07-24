@@ -28,7 +28,7 @@ integration server or simply if you don't know why the test suite hangs.
    active is by checking if a trace function is set and if one is, it
    check to see if the module it belongs to is present in a set of
    known debugging frameworks modules OR if pytest itself drops you
-   into a pbd session.
+   into a pdb session.
 
 .. note::
 
