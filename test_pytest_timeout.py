@@ -77,6 +77,7 @@ def test_thread(testdir):
 )
 def test_cov(testdir):
     # This test requires pytest-cov
+    pytest.importorskip("pytest_cov")
     testdir.makepyfile(
         """
         import time
