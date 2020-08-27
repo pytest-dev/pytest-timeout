@@ -16,19 +16,19 @@ pytest-timeout
 .. |python| image:: https://img.shields.io/pypi/pyversions/pytest-timeout.svg
   :target: https://pypi.python.org/pypi/pytest-timeout/
 
+**This is not the timeout you are looking for!**
+
+.. warning::
+
+   Please read this README carefully and only use this plugin if you
+   understand the consequences.  Remember your test suite needs to be
+   **fast**, timeouts are a last resort not an expected failure mode.
+
 This is a plugin which will terminate tests after a certain timeout,
 assuming the test session isn't being debugged. When aborting a test
 it will show a stack dump of all threads running at the time.
 This is useful when running tests under a continuous
 integration server or simply if you don't know why the test suite hangs.
-
-.. note::
-
-   The way this plugin detects whether or not a debugging session is
-   active is by checking if a trace function is set and if one is, it
-   check to see if the module it belongs to is present in a set of
-   known debugging frameworks modules OR if pytest itself drops you
-   into a pdb session.
 
 .. note::
 
@@ -196,6 +196,16 @@ that subsequent fixtures which need to be finalised might not have
 been executed, which could result in a broken test-suite anyway.  In
 case of doubt the thread method which terminates the entire process
 might result in clearer output.
+
+
+Debugger Detection
+==================
+
+The way this plugin detects whether or not a debugging session is
+active is by checking if a trace function is set and if one is, it
+check to see if the module it belongs to is present in a set of known
+debugging frameworks modules OR if pytest itself drops you into a pdb
+session.
 
 
 Changelog
