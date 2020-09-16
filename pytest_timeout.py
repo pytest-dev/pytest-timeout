@@ -29,9 +29,9 @@ Timeout in seconds before dumping the stacks.  Default is 0 which
 means no timeout.
 """.strip()
 METHOD_DESC = """
-Timeout mechanism to use.  'signal' uses SIGALRM if available,
-'thread' uses a timer thread.  The default is to use 'signal' and fall
-back to 'thread'.
+Timeout mechanism to use.  'signal' uses SIGALRM, 'thread' uses a timer
+thread.  If unspecified 'signal' is used on platforms which support
+SIGALRM, otherwise 'thread' is used.
 """.strip()
 FUNC_ONLY_DESC = """
 When set to True, defers the timeout evaluation to only the test
