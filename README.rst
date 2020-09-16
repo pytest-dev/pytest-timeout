@@ -54,12 +54,15 @@ Install is as simple as e.g.::
 
    pip install pytest-timeout
 
-Now you can run tests using a timeout, in seconds, after which they
-will be terminated::
+Now you can run the test suite while setting a timeout in seconds, any
+individual test which takes longer than the given duration will be
+terminated::
 
    pytest --timeout=300
 
-Alternatively you can mark individual tests as having a timeout::
+Furthermore you can also use a decorator to set the timeout for an
+individual test.  If combined with the `--timeout` flag this will
+override the timeout for this individual test::
 
    @pytest.mark.timeout(60)
    def test_foo():
