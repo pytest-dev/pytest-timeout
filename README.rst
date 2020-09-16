@@ -24,11 +24,12 @@ pytest-timeout
    understand the consequences.  Remember your test suite needs to be
    **fast**, timeouts are a last resort not an expected failure mode.
 
-This is a plugin which will terminate tests after a certain timeout,
-assuming the test session isn't being debugged. When aborting a test
-it will show a stack dump of all threads running at the time.
-This is useful when running tests under a continuous
-integration server or simply if you don't know why the test suite hangs.
+This plugin will time each test and terminate it when it takes too
+long.  Termination may or may not be graceful, please see below, but
+when aborting it will show a stack dump of all thread running at the
+time.  This is useful when running tests under a continuous
+integration server or simply if you don't know why the test suite
+hangs.
 
 .. note::
 
@@ -204,11 +205,15 @@ might result in clearer output.
 Debugger Detection
 ==================
 
+This plugin tries to avoid triggering the timeout when a debugger is
+detected.  This is mostly a convenience so you do not need to remember
+to disable the timeout when interactively debugging.
+
 The way this plugin detects whether or not a debugging session is
 active is by checking if a trace function is set and if one is, it
 check to see if the module it belongs to is present in a set of known
 debugging frameworks modules OR if pytest itself drops you into a pdb
-session.
+session using `--pdb` or similar.
 
 
 Changelog
