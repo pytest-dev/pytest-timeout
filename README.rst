@@ -62,7 +62,7 @@ terminated::
    pytest --timeout=300
 
 Furthermore you can also use a decorator to set the timeout for an
-individual test.  If combined with the `--timeout` flag this will
+individual test.  If combined with the ```--timeout``` flag this will
 override the timeout for this individual test::
 
    @pytest.mark.timeout(60)
@@ -213,7 +213,7 @@ The way this plugin detects whether or not a debugging session is
 active is by checking if a trace function is set and if one is, it
 check to see if the module it belongs to is present in a set of known
 debugging frameworks modules OR if pytest itself drops you into a pdb
-session using `--pdb` or similar.
+session using ```--pdb``` or similar.
 
 
 Changelog
