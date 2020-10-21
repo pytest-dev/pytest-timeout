@@ -15,7 +15,6 @@ import traceback
 from collections import namedtuple
 from distutils.version import LooseVersion
 
-import py
 import pytest
 
 
@@ -433,6 +432,41 @@ def dump_stacks():
         write("".join(traceback.format_stack(frame)))
 
 
+def _getdimensions():
+
+    if sys.version_info >= (3, 3, 0):
+        import shutil
+        size = shutil.get_terminal_size()
+        return size.lines, size.columns
+    else:
+        import termios, fcntl, struct
+        call = fcntl.ioctl(1, termios.TIOCGWINSZ, "\000" * 8)
+        height, width = struct.unpack("hhhh", call)[:2]
+        return height, width
+
+
+def _get_terminal_width():
+    width = 0
+    try:
+        _, width = _getdimensions()
+    except (KeyboardInterrupt, SystemExit, MemoryError, GeneratorExit):
+        raise
+    except:
+        # pass to fallback below
+        pass
+
+    if width == 0:
+        # FALLBACK:
+        # * some exception happened
+        # * or this is emacs terminal which reports (0,0)
+        width = int(os.environ.get('COLUMNS', 80))
+
+    # XXX the windows getdimensions may be bogus, let's sanify a bit
+    if width < 40:
+        width = 80
+    return width
+
+
 def write_title(title, stream=None, sep="~"):
     """Write a section title.
 
@@ -441,7 +475,7 @@ def write_title(title, stream=None, sep="~"):
     """
     if stream is None:
         stream = sys.stderr
-    width = py.io.get_terminal_width()
+    width = _get_terminal_width()
     fill = int((width - len(title) - 2) / 2)
     line = " ".join([sep * fill, title, sep * fill])
     if len(line) < width:
