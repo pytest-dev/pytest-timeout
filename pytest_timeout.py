@@ -200,12 +200,12 @@ def timeout_setup(item):
             timeout_sigalrm(item, params.timeout)
 
         def cancel():
-            signal.setitimer(signal.ITIMER_REAL, 0)
-            signal.signal(signal.SIGALRM, signal.SIG_DFL)
+            signal.setitimer(signal.ITIMER_PROF, 0)
+            signal.signal(signal.SIGPROF, signal.SIG_DFL)
 
         item.cancel_timeout = cancel
-        signal.signal(signal.SIGALRM, handler)
-        signal.setitimer(signal.ITIMER_REAL, params.timeout)
+        signal.signal(signal.SIGPROF, handler)
+        signal.setitimer(signal.ITIMER_PROF, params.timeout)
     elif params.method == "thread":
         timer = threading.Timer(params.timeout, timeout_timer, (item, params.timeout))
         timer.name = "%s %s" % (__name__, item.nodeid)
