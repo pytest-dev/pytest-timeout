@@ -299,6 +299,19 @@ def test_timeout_mark_args(testdir):
     result = testdir.runpytest()
     result.stdout.fnmatch_lines(["*ValueError*"])
 
+def test_timeout_mark_signal_wrong(testdir):
+    testdir.makepyfile(
+        """
+        import pytest
+
+        @pytest.mark.timeout(1, "signal", signal_timer="wrong")
+        def test_foo():
+            pass
+    """
+    )
+    result = testdir.runpytest()
+    result.stdout.fnmatch_lines(["*ValueError*"])
+
 
 def test_timeout_mark_method_nokw(testdir):
     testdir.makepyfile(
@@ -312,6 +325,22 @@ def test_timeout_mark_method_nokw(testdir):
     )
     result = testdir.runpytest()
     result.stderr.fnmatch_lines(["*+ Timeout +*"])
+
+@have_sigalrm
+def test_timeout_mark_signal_prof(testdir):
+    testdir.makepyfile(
+        """
+        import pytest, sys
+
+        @pytest.mark.timeout(1, 'signal', signal_timer="ITIMER_PROF")
+        def test_foo():
+            sum = 0
+            for i in range(sys.maxsize):
+                sum += 1
+    """
+    )
+    result = testdir.runpytest()
+    result.stdout.fnmatch_lines(["*Failed: Timeout >1.0s*"])
 
 
 def test_timeout_mark_noargs(testdir):
@@ -390,6 +419,28 @@ def test_ini_method(testdir):
     result = testdir.runpytest()
     assert "=== 1 failed in " not in result.outlines[-1]
 
+@have_sigalrm
+def test_ini_signal_timer_virtual(testdir):
+    testdir.makepyfile(
+        """
+        import sys
+
+        def test_foo():
+            sum = 0
+            for i in range(sys.maxsize):
+                sum += 1
+    """
+    )
+    testdir.makeini(
+        """
+        [pytest]
+        timeout = 1
+        timeout_method = signal
+        timeout_signal_timer = ITIMER_VIRTUAL
+    """
+    )
+    result = testdir.runpytest()
+    result.stdout.fnmatch_lines(["*Failed: Timeout >1.0s*"])
 
 def test_timeout_marker_inheritance(testdir):
     testdir.makepyfile(
