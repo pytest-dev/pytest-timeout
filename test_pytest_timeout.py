@@ -330,12 +330,12 @@ def test_timeout_mark_method_nokw(testdir):
 def test_timeout_mark_signal_prof(testdir):
     testdir.makepyfile(
         """
-        import pytest, sys
+        import pytest
 
         @pytest.mark.timeout(1, 'signal', signal_timer="ITIMER_PROF")
         def test_foo():
             sum = 0
-            for i in range(sys.maxsize):
+            while True:
                 sum += 1
     """
     )
@@ -423,11 +423,9 @@ def test_ini_method(testdir):
 def test_ini_signal_timer_virtual(testdir):
     testdir.makepyfile(
         """
-        import sys
-
         def test_foo():
             sum = 0
-            for i in range(sys.maxsize):
+            while True:
                 sum += 1
     """
     )
