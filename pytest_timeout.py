@@ -92,7 +92,7 @@ def pytest_configure(config):
     """Register the marker so it shows up in --markers output."""
     config.addinivalue_line(
         "markers",
-        "timeout(timeout, method=None, func_only=False, signal_timer=\"ITIMER_REAL\"): " 
+        "timeout(timeout, method=None, func_only=False, signal_timer=\"ITIMER_REAL\"): "
         "Set a timeout, timeout "
         "method and func_only evaluation on just one test item.  The first "
         "argument, *timeout*, is the timeout in seconds while the keyword, "
@@ -147,7 +147,8 @@ def pytest_report_header(config):
     """Add timeout config to pytest header."""
     if config._env_timeout:
         return [
-            "timeout: %ss\ntimeout method: %s\ntimeout func_only: %s\ntimeout signal_timer: %s"
+            "timeout: %ss\ntimeout method: %s\ntimeout func_only: %s\n"
+            "timeout signal_timer: %s"
             % (
                 config._env_timeout,
                 config._env_timeout_method,
