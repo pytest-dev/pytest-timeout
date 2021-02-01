@@ -147,8 +147,7 @@ def pytest_report_header(config):
     """Add timeout config to pytest header."""
     if config._env_timeout:
         return [
-            "timeout: %ss\ntimeout method: %s\ntimeout func_only: %s\n"
-            "timeout signal_timer: %s"
+            "timeout: %ss   method: %s   func_only: %s   signal_timer: %s"
             % (
                 config._env_timeout,
                 config._env_timeout_method,
