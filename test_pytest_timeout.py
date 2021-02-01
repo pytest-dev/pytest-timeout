@@ -33,7 +33,7 @@ def test_header(testdir):
     )
     result = testdir.runpytest("--timeout=1")
     result.stdout.fnmatch_lines(
-        ["timeout: 1.0s", "timeout method:*", "timeout func_only:*"]
+        ["timeout: 1.0s   method:*   func_only:*   signal_timer:*"]
     )
 
 
