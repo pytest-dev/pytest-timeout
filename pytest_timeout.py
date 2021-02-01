@@ -99,7 +99,7 @@ def pytest_configure(config):
         "*method*, takes the same values as the --timeout_method option. The "
         "*func_only* keyword, when set to True, defers the timeout evaluation "
         "to only the test function body, ignoring the time it takes when "
-        "evaluating any fixtures used in the test."
+        "evaluating any fixtures used in the test. "
         "The *signal_timer* keyword determines the timer used when *method* is "
         "signal.",
     )
