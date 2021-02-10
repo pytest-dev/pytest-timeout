@@ -182,6 +182,9 @@ def is_debugging(trace_func=None):
         for name in KNOWN_DEBUGGING_MODULES:
             if name in parts:
                 return True
+    # PyDev (and by extension PyCharm's debugger) sets this environment variable when debugging code
+    if "PYDEVD_LOAD_VALUES_ASYNC" in os.environ:
+        return True
     return False
 
 
