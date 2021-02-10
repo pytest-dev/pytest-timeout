@@ -21,9 +21,11 @@ jobs:
             pre_releases: "--pre"
           - v: "3.8"
             tox_env: "py38"
+          - v: "3.9"
+            tox_env: "py39"
           - v: "pypy2"
             tox_env: "pypy2"
-          - v: "3.8"
+          - v: "3.9"
             tox_env: "linting"
         os: [ubuntu-latest, windows-latest]
     steps:
