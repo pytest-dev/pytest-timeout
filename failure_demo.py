@@ -1,8 +1,8 @@
 """Demonstration of timeout failures using pytest_timeout.
 
-To use this demo, invoke py.test on it::
+To use this demo, invoke pytest on it::
 
-   py.test failure_demo.py
+   pytest failure_demo.py
 """
 import threading
 import time

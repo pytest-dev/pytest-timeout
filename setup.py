@@ -7,7 +7,7 @@ with open("README.rst", encoding="utf-8") as f:
 
 setup(
     name="pytest-timeout",
-    description="py.test plugin to abort hanging tests",
+    description="pytest plugin to abort hanging tests",
     long_description=long_description,
     version="1.4.2",
     author="Floris Bruynooghe",
