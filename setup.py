@@ -1,9 +1,7 @@
 """Setuptools install script for pytest-timeout."""
-import io
-
 from setuptools import setup
 
-with io.open("README.rst", encoding="utf-8") as f:
+with open("README.rst", encoding="utf-8") as f:
     long_description = f.read()
 
 
