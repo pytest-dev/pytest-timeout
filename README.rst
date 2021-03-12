@@ -43,9 +43,8 @@ hangs.
    stage.  See below for detailed information on the timeout methods
    and their side-effects.
 
-The pytest-timeout plugin has been tested on python 2.7 or higher,
-including 3.X, pypy and pypy3.  See tox.ini for currently tested
-versions.
+The pytest-timeout plugin has been tested on Python 3.6 and higher,
+including PyPy3.  See tox.ini for currently tested versions.
 
 
 Usage
