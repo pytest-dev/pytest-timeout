@@ -21,6 +21,10 @@ jobs:
             tox_env: "linting"
         os: [ubuntu-latest, windows-latest]
     steps:
+      - name: Set Git to use LF
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
       - uses: actions/checkout@v1
       - name: Set up Python
         uses: actions/setup-python@v1
