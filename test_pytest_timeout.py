@@ -151,7 +151,7 @@ def test_fix_setup(meth, scope, testdir):
             scope=scope
         )
     )
-    result = testdir.runpytest("--timeout=1", "--timeout-method={}".format(meth))
+    result = testdir.runpytest("--timeout=1", f"--timeout-method={meth}")
     assert result.ret > 0
     assert "Timeout" in result.stdout.str() + result.stderr.str()
 
@@ -198,7 +198,7 @@ def test_fix_finalizer(meth, scope, testdir):
                 pass
     """
     )
-    result = testdir.runpytest("--timeout=1", "-s", "--timeout-method={}".format(meth))
+    result = testdir.runpytest("--timeout=1", "-s", f"--timeout-method={meth}")
     assert result.ret > 0
     assert "Timeout" in result.stdout.str() + result.stderr.str()
 
