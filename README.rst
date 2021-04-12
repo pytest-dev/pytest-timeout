@@ -215,6 +215,40 @@ debugging frameworks modules OR if pytest itself drops you into a pdb
 session using ```--pdb``` or similar.
 
 
+Logging Customization
+=====================
+
+This plugin sets a new ``timed_out`` attribute on report objects via
+the ``pytest_runtest_makereport`` hook. This way logging can be
+customized in your ``conftest.py`` by implementing
+``pytest_report_teststatus``::
+
+    @pytest.hookimpl(tryfirst=True)
+    def pytest_report_teststatus(report, **kwargs):
+        """Adapted from
+        https://github.com/pytest-dev/pytest/blob/38d8deb74d95077ebf189440ca047e14f8197da1/src/_pytest/runner.py#L202
+        """
+        d = "%.2f" % getattr(report, "duration", -1.0)
+        if report.passed:
+            return "passed", "P", "PASSED (%s)" % d
+        if getattr(report, "timed_out", False):
+            return "failed", "T", "TIMEOUT (%s)" % d
+        if report.failed:
+            return "failed", "F", "FAILED (%s)" % d
+        return None
+
+This will print ``T`` (or ``TIMEOUT (5.00)`` if verbose) in case a test
+times out. You might want to restrict this to the *call* phase because
+the above code would print three symbols (lines) per test; one for each of
+the three test phases *setup*, *call* and *teardown* (use ``report.when``).
+Remark: If a ``report`` has the ``timed_out`` attribute, it can have three
+values: ``True`` or ``False`` if the test ran and a timeout appeared or did
+not appear. If the value is ``None``, the item might have been run with
+timeout being disabled or something unexpected has happened. This way all
+checks are reliable, and ``report.timed_out`` still works, because
+``bool(None)`` is ``False``.
+
+
 Changelog
 =========
 
