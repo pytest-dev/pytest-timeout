@@ -32,17 +32,23 @@ METHOD_DESC = """
 Timeout mechanism to use.  'signal' uses SIGALRM, 'thread' uses a timer
 thread.  If unspecified 'signal' is used on platforms which support
 SIGALRM, otherwise 'thread' is used.
+'both' tries to gracefully time out a test, after kill_delay seconds
+a harsh kill is used to reliably stop the test.
 """.strip()
 FUNC_ONLY_DESC = """
 When set to True, defers the timeout evaluation to only the test
 function body, ignoring the time it takes when evaluating any fixtures
 used in the test.
 """.strip()
+KILL_DELAY_DESC = """
+Delay between sending SIGALRM and killing the run using a timer thread.
+(method 'both' only)
+""".strip()
 
 # bdb covers pdb, ipdb, and possibly others
 # pydevd covers PyCharm, VSCode, and possibly others
 KNOWN_DEBUGGING_MODULES = {"pydevd", "bdb"}
-Settings = namedtuple("Settings", ["timeout", "method", "func_only"])
+Settings = namedtuple("Settings", ["timeout", "method", "func_only", "kill_delay"])
 
 
 @pytest.hookimpl
@@ -56,19 +62,21 @@ def pytest_addoption(parser):
     group.addoption(
         "--timeout_method",
         action="store",
-        choices=["signal", "thread"],
+        choices=["signal", "thread", "both"],
         help="Deprecated, use --timeout-method",
     )
     group.addoption(
         "--timeout-method",
         dest="timeout_method",
         action="store",
-        choices=["signal", "thread"],
+        choices=["signal", "thread", "both"],
         help=METHOD_DESC,
     )
+    group.addoption("--timeout-kill-delay", type=float, help=KILL_DELAY_DESC)
     parser.addini("timeout", TIMEOUT_DESC)
     parser.addini("timeout_method", METHOD_DESC)
     parser.addini("timeout_func_only", FUNC_ONLY_DESC, type="bool")
+    parser.addini("timeout_kill_delay", KILL_DELAY_DESC)
 
 
 @pytest.hookimpl
@@ -89,6 +97,7 @@ def pytest_configure(config):
     config._env_timeout = settings.timeout
     config._env_timeout_method = settings.method
     config._env_timeout_func_only = settings.func_only
+    config._env_timeout_kill_delay = settings.kill_delay
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -127,11 +136,15 @@ def pytest_report_header(config):
     """Add timeout config to pytest header."""
     if config._env_timeout:
         return [
-            "timeout: %ss\ntimeout method: %s\ntimeout func_only: %s"
+            (
+                "timeout: %ss\ntimeout method: %s\ntimeout func_only: %s\n"
+                "timeout kill_delay: %s"
+            )
             % (
                 config._env_timeout,
                 config._env_timeout_method,
                 config._env_timeout_func_only,
+                config._env_timeout_kill_delay,
             )
         ]
 
@@ -216,6 +229,30 @@ def timeout_setup(item):
 
         item.cancel_timeout = cancel
         timer.start()
+    elif params.method == "both":
+        timer = threading.Timer(
+            params.timeout + params.kill_delay,
+            timeout_timer,
+            (item, params.timeout + params.kill_delay),
+        )
+        timer.name = "%s %s" % (__name__, item.nodeid)
+
+        def handler_signal(signum, frame):
+            __tracebackhide__ = True
+            timer.cancel()
+            timer.join()
+            timeout_sigalrm(item, params.timeout)
+
+        def cancel():
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            signal.signal(signal.SIGALRM, signal.SIG_DFL)
+            timer.cancel()
+            timer.join()
+
+        item.cancel_timeout = cancel
+        signal.signal(signal.SIGALRM, handler_signal)
+        signal.setitimer(signal.ITIMER_REAL, params.timeout)
+        timer.start()
 
 
 def timeout_teardown(item):
@@ -258,7 +295,19 @@ def get_env_settings(config):
         func_only = None
     if func_only is not None:
         func_only = _validate_func_only(func_only, "config file")
-    return Settings(timeout, method, func_only or False)
+
+    kill_delay = config.getvalue("timeout_kill_delay")
+    if kill_delay is None:
+        kill_delay = _validate_timeout(
+            os.environ.get("PYTEST_KILL_DELAY"),
+            "PYTEST_KILL_DELAY environment variable",
+            name="kill_delay",
+        )
+    if kill_delay is None:
+        ini = config.getini("timeout_kill_delay")
+        if ini:
+            kill_delay = _validate_timeout(ini, "config file", name="kill_delay")
+    return Settings(timeout, method, func_only or False, kill_delay)
 
 
 def get_func_only_setting(item):
@@ -277,7 +326,7 @@ def get_func_only_setting(item):
 
 def get_params(item, marker=None):
     """Return (timeout, method) for an item."""
-    timeout = method = func_only = None
+    timeout = method = func_only = kill_delay = None
     if not marker:
         marker = item.get_closest_marker("timeout")
     if marker is not None:
@@ -285,13 +334,18 @@ def get_params(item, marker=None):
         timeout = _validate_timeout(settings.timeout, "marker")
         method = _validate_method(settings.method, "marker")
         func_only = _validate_func_only(settings.func_only, "marker")
+        kill_delay = _validate_timeout(settings.kill_delay, "marker", name="kill_delay")
     if timeout is None:
         timeout = item.config._env_timeout
     if method is None:
         method = item.config._env_timeout_method
     if func_only is None:
         func_only = item.config._env_timeout_func_only
-    return Settings(timeout, method, func_only)
+    if kill_delay is None:
+        kill_delay = item.config._env_timeout_kill_delay
+    if method == "both" and (kill_delay is None or kill_delay <= 0):
+        method = DEFAULT_METHOD
+    return Settings(timeout, method, func_only, kill_delay)
 
 
 def _parse_marker(marker):
@@ -302,7 +356,7 @@ def _parse_marker(marker):
     """
     if not marker.args and not marker.kwargs:
         raise TypeError("Timeout marker must have at least one argument")
-    timeout = method = func_only = NOTSET = object()
+    timeout = method = func_only = kill_delay = NOTSET = object()
     for kw, val in marker.kwargs.items():
         if kw == "timeout":
             timeout = val
@@ -310,6 +364,8 @@ def _parse_marker(marker):
             method = val
         elif kw == "func_only":
             func_only = val
+        elif kw == "kill_delay":
+            kill_delay = val
         else:
             raise TypeError("Invalid keyword argument for timeout marker: %s" % kw)
     if len(marker.args) >= 1 and timeout is not NOTSET:
@@ -328,22 +384,24 @@ def _parse_marker(marker):
         method = None
     if func_only is NOTSET:
         func_only = None
-    return Settings(timeout, method, func_only)
+    if kill_delay is NOTSET:
+        kill_delay = None
+    return Settings(timeout, method, func_only, kill_delay)
 
 
-def _validate_timeout(timeout, where):
+def _validate_timeout(timeout, where, name: str = "timeout"):
     if timeout is None:
         return None
     try:
         return float(timeout)
     except ValueError:
-        raise ValueError("Invalid timeout %s from %s" % (timeout, where))
+        raise ValueError("Invalid %s %s from %s" % (name, timeout, where))
 
 
 def _validate_method(method, where):
     if method is None:
         return None
-    if method not in ["signal", "thread"]:
+    if method not in ["signal", "thread", "both"]:
         raise ValueError("Invalid method %s from %s" % (method, where))
     return method
 

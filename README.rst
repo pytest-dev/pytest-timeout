@@ -152,6 +152,19 @@ interfere with the code under test.  If the code under test uses
 SIGALRM itself things will go wrong and you will have to choose the
 *thread* method.
 
+both
+----
+
+This method attempts to combine the reliability of the *thread* method
+with the gracefulness of the *signal* method. After ``timeout`` seconds
+a signal-based attempt to interrupt the program is started. If the
+signal handler is not executed, the harsh *thread* method kills the
+thread after additional ``kill_delay`` seconds.
+If your code uses a custom signal handler, it will interfere and break
+the soft *signal* attempt, so you might want to switch to *thread*.
+Similar to ``PYTEST_TIMEOUT``, you can specify the kill delay with the
+``PYTEST_KILL_DELAY`` environment variable.
+
 Specifying the Timeout Method
 -----------------------------
 
