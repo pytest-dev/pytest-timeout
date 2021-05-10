@@ -218,6 +218,12 @@ session using ```--pdb``` or similar.
 Changelog
 =========
 
+2.0.0
+-----
+
+- Use thread timeout method when plugin is not called from main
+  thread to avoid crash.
+
 1.4.2
 -----
 

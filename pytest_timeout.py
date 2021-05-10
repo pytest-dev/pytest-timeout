@@ -193,7 +193,15 @@ def timeout_setup(item):
     params = get_params(item)
     if params.timeout is None or params.timeout <= 0:
         return
-    if params.method == "signal":
+
+    timeout_method = params.method
+    if (
+        timeout_method == "signal"
+        and threading.current_thread() is not threading.main_thread()
+    ):
+        timeout_method = "thread"
+
+    if timeout_method == "signal":
 
         def handler(signum, frame):
             __tracebackhide__ = True
@@ -206,7 +214,7 @@ def timeout_setup(item):
         item.cancel_timeout = cancel
         signal.signal(signal.SIGALRM, handler)
         signal.setitimer(signal.ITIMER_REAL, params.timeout)
-    elif params.method == "thread":
+    elif timeout_method == "thread":
         timer = threading.Timer(params.timeout, timeout_timer, (item, params.timeout))
         timer.name = "%s %s" % (__name__, item.nodeid)
 
