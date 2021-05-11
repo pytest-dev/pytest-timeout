@@ -482,3 +482,36 @@ def test_is_debugging(monkeypatch):
     module.custom_trace = custom_trace
 
     assert pytest_timeout.is_debugging(custom_trace)
+
+
+def test_logging_customization(testdir):
+    testdir.makepyfile(
+        conftest="""
+        import pytest
+
+        @pytest.hookimpl(hookwrapper=True)
+        def pytest_runtest_makereport(item, call):
+            r = yield
+            if not hasattr(r, "get_result"):
+                return
+            report = r.get_result()
+            timed_out = False
+            if hasattr(call.excinfo, "value"):
+                msg = getattr(call.excinfo.value, "msg", None)
+                if isinstance(msg, str) and msg.startswith("Timeout >"):
+                    timed_out = True
+            assert bool(getattr(report, "timed_out", None)) == timed_out
+    """
+    )
+    testdir.makepyfile(
+        """
+        import time
+
+        def test_times_out():
+            time.sleep(2)
+
+        def test_does_not_time_out():
+            time.sleep(0.1)
+    """
+    )
+    testdir.runpytest("--timeout=1", "-ss")
