@@ -482,3 +482,27 @@ def test_is_debugging(monkeypatch):
     module.custom_trace = custom_trace
 
     assert pytest_timeout.is_debugging(custom_trace)
+
+
+def test_not_main_thread(testdir):
+    testdir.makepyfile(
+        """
+        import threading
+        import pytest_timeout
+
+        current_timeout_setup = pytest_timeout.timeout_setup
+
+        def new_timeout_setup(item):
+            threading.Thread(
+                target=current_timeout_setup, args=(item),
+            ).join()
+
+        pytest_timeout.timeout_setup = new_timeout_setup
+
+        def test_x(): pass
+    """
+    )
+    result = testdir.runpytest("--timeout=1")
+    result.stdout.fnmatch_lines(
+        ["timeout: 1.0s", "timeout method:*", "timeout func_only:*"]
+    )
