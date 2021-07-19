@@ -77,7 +77,7 @@ defined in a number of ways, from low to high priority:
 
 1. You can set a global timeout in the `pytest configuration file`__
    using the ``timeout`` option.  E.g.:
-   
+
    .. code:: ini
 
       [pytest]
@@ -91,7 +91,7 @@ defined in a number of ways, from low to high priority:
 
 4. Using the ``timeout`` marker_ on test items you can specify
    timeouts on a per-item basis:
-   
+
    .. code:: python
 
       @pytest.mark.timeout(300)
@@ -169,7 +169,7 @@ method.  On a marker this is done using the ``method`` keyword:
 
 .. code:: python
 
-   @pytest.mark.timeout(method='thread')
+   @pytest.mark.timeout(method="thread")
    def test_foo():
        pass
 
