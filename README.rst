@@ -61,8 +61,10 @@ terminated::
    pytest --timeout=300
 
 Furthermore you can also use a decorator to set the timeout for an
-individual test.  If combined with the ```--timeout``` flag this will
-override the timeout for this individual test::
+individual test.  If combined with the ``--timeout`` flag this will
+override the timeout for this individual test:
+
+.. code:: python
 
    @pytest.mark.timeout(60)
    def test_foo():
@@ -74,7 +76,9 @@ timeout is always specified as a number of seconds, and can be
 defined in a number of ways, from low to high priority:
 
 1. You can set a global timeout in the `pytest configuration file`__
-   using the ``timeout`` option.  E.g.::
+   using the ``timeout`` option.  E.g.:
+
+   .. code:: ini
 
       [pytest]
       timeout = 300
@@ -86,7 +90,9 @@ defined in a number of ways, from low to high priority:
    overriding both the environment variable and configuration option.
 
 4. Using the ``timeout`` marker_ on test items you can specify
-   timeouts on a per-item basis::
+   timeouts on a per-item basis:
+
+   .. code:: python
 
       @pytest.mark.timeout(300)
       def test_foo():
@@ -159,9 +165,11 @@ The timeout method can be specified by using the ``timeout_method``
 option in the `pytest configuration file`__, the ``--timeout_method``
 command line parameter or the ``timeout`` marker_.  Simply set their
 value to the string ``thread`` or ``signal`` to override the default
-method.  On a marker this is done using the ``method`` keyword::
+method.  On a marker this is done using the ``method`` keyword:
 
-   @pytest.mark.timeout(method='thread')
+.. code:: python
+
+   @pytest.mark.timeout(method="thread")
    def test_foo():
        pass
 
@@ -172,7 +180,9 @@ __ https://docs.pytest.org/en/latest/reference.html#ini-options-ref
 The ``timeout`` Marker API
 ==========================
 
-The full signature of the timeout marker is::
+The full signature of the timeout marker is:
+
+.. code:: python
 
    pytest.mark.timeout(timeout=0, method=DEFAULT_METHOD)
 
@@ -212,7 +222,7 @@ The way this plugin detects whether or not a debugging session is
 active is by checking if a trace function is set and if one is, it
 check to see if the module it belongs to is present in a set of known
 debugging frameworks modules OR if pytest itself drops you into a pdb
-session using ```--pdb``` or similar.
+session using ``--pdb`` or similar.
 
 
 Changelog
