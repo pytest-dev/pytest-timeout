@@ -228,6 +228,11 @@ session using ``--pdb`` or similar.
 Changelog
 =========
 
+2.1.1
+-----
+
+- Fixed disabling the timeout when using the PyCharm Debugger. Thanks monkey-debugger.
+
 2.1.0
 -----
 
