@@ -238,6 +238,8 @@ Changelog
 
 - Use thread timeout method when plugin is not called from main
   thread to avoid crash.
+- Fix pycharm debugger detection so timeouts are not triggered during
+  debugger usage.
 
 1.4.2
 -----
