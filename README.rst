@@ -228,14 +228,10 @@ session using ``--pdb`` or similar.
 Changelog
 =========
 
-2.1.0
------
-
-- Increase pytest requirement to >=5.0.0.  Thanks Dominic Davis-Foster.
-
 2.0.0
 -----
 
+- Increase pytest requirement to >=5.0.0.  Thanks Dominic Davis-Foster.
 - Use thread timeout method when plugin is not called from main
   thread to avoid crash.
 - Fix pycharm debugger detection so timeouts are not triggered during
