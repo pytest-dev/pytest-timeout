@@ -228,6 +228,11 @@ session using ``--pdb`` or similar.
 Changelog
 =========
 
+2.0.1
+-----
+
+- Fix Python 2 removal, thanks Nicusor Picatureanu.
+
 2.0.0
 -----
 
@@ -236,6 +241,7 @@ Changelog
   thread to avoid crash.
 - Fix pycharm debugger detection so timeouts are not triggered during
   debugger usage.
+- Dropped support for Python 2, minimum pytest version upported is 5.0.0.
 
 1.4.2
 -----
