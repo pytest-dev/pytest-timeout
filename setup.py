@@ -9,7 +9,7 @@ setup(
     name="pytest-timeout",
     description="pytest plugin to abort hanging tests",
     long_description=long_description,
-    version="2.0.0",
+    version="2.0.1",
     author="Floris Bruynooghe",
     author_email="flub@devork.be",
     url="https://github.com/pytest-dev/pytest-timeout",
