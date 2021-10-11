@@ -210,6 +210,18 @@ been executed, which could result in a broken test-suite anyway.  In
 case of doubt the thread method which terminates the entire process
 might result in clearer output.
 
+Avoiding timeouts in Fixtures
+=============================
+
+The timeout applies to the entire test including any fixtures which
+may need to be setup or torn down for the test (the exact affected
+fixtures depends on which scope they are and whether other tests will
+still use the same fixture).  If the timeouts really are too short to
+include fixture durations, firstly make the timeouts larger ;).  If
+this really isn't an option a `timeout_func_only` boolean setting
+exists which can be set in the pytest ini configuration file, as
+documented in `pytest --help`.
+
 
 Debugger Detection
 ==================
