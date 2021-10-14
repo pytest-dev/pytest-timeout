@@ -87,7 +87,7 @@ def test_cov(testdir):
     """
     )
     result = testdir.runpytest(
-        "--timeout=1", "--cov=test_cov.py", "--timeout-method=thread"
+        "--timeout=1", "--cov=test_cov", "--timeout-method=thread"
     )
     result.stderr.fnmatch_lines(
         [
