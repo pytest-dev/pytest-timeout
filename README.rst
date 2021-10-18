@@ -146,8 +146,8 @@ signal
 
 If the system supports the SIGALRM signal the *signal* method will be
 used by default.  This method schedules an alarm when the test item
-starts and cancels it when it finishes.  If the alarm expires during
-the test the signal handler will dump the stack of any other threads
+starts and cancels the alarm when the test finishes.  If the alarm expires
+during the test the signal handler will dump the stack of any other threads
 running to stderr and use ``pytest.fail()`` to interrupt the test.
 
 The benefit of this method is that the pytest process is not
