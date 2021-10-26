@@ -37,11 +37,20 @@ When set to True, defers the timeout evaluation to only the test
 function body, ignoring the time it takes when evaluating any fixtures
 used in the test.
 """.strip()
+TIMEOUT_SESSION_DESC = """
+When set to True, applies the timeout limit to the whole pytest session
+rather than individual functions. Default: False.
+""".strip()
 
 # bdb covers pdb, ipdb, and possibly others
 # pydevd covers PyCharm, VSCode, and possibly others
 KNOWN_DEBUGGING_MODULES = {"pydevd", "bdb", "pydevd_frame_evaluator"}
-Settings = namedtuple("Settings", ["timeout", "method", "func_only"])
+Settings = namedtuple("Settings", ["timeout", "method", "func_only", "timeout_session"])
+
+# Scopes over which timeout might be considered
+ENTIRE_TEST = "entire_function"
+FUNCTION_ONLY = "func_only"
+SESSION = "session"
 
 
 @pytest.hookimpl
@@ -65,9 +74,16 @@ def pytest_addoption(parser):
         choices=["signal", "thread"],
         help=METHOD_DESC,
     )
+    group.addoption(
+        "--timeout-session",
+        dest="timeout_session",
+        action="store_true",
+        help=TIMEOUT_SESSION_DESC,
+    )
     parser.addini("timeout", TIMEOUT_DESC)
     parser.addini("timeout_method", METHOD_DESC)
     parser.addini("timeout_func_only", FUNC_ONLY_DESC, type="bool")
+    parser.addini("timeout_session", TIMEOUT_SESSION_DESC, type="bool")
 
 
 @pytest.hookimpl
@@ -88,6 +104,7 @@ def pytest_configure(config):
     config._env_timeout = settings.timeout
     config._env_timeout_method = settings.method
     config._env_timeout_func_only = settings.func_only
+    config._env_timeout_session = settings.timeout_session
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -98,11 +115,11 @@ def pytest_runtest_protocol(item):
     teardown, then this hook installs the timeout.  Otherwise
     pytest_runtest_call is used.
     """
-    func_only = get_func_only_setting(item)
-    if func_only is False:
+    entire_test = get_scope_setting(item) == ENTIRE_TEST
+    if entire_test:
         timeout_setup(item)
     yield
-    if func_only is False:
+    if entire_test:
         timeout_teardown(item)
 
 
@@ -113,7 +130,7 @@ def pytest_runtest_call(item):
     If the timeout is set on only the test function this hook installs
     the timeout, otherwise pytest_runtest_protocol is used.
     """
-    func_only = get_func_only_setting(item)
+    func_only = get_scope_setting(item) == FUNCTION_ONLY
     if func_only is True:
         timeout_setup(item)
     yield
@@ -121,16 +138,32 @@ def pytest_runtest_call(item):
         timeout_teardown(item)
 
 
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtestloop(session):
+    """Hook in timeouts to the whole pytest session.
+
+    If the timeout is set on the whole test session, this hook installs
+    the timeout, otherwise one of the other hooks is used.
+    """
+    entire_session = get_scope_setting(session) == SESSION
+    if entire_session:
+        timeout_setup(session)
+    yield
+    if entire_session:
+        timeout_teardown(session)
+
+
 @pytest.hookimpl(tryfirst=True)
 def pytest_report_header(config):
     """Add timeout config to pytest header."""
     if config._env_timeout:
         return [
-            "timeout: %ss\ntimeout method: %s\ntimeout func_only: %s"
+            "timeout: %ss\ntimeout method: %s\ntimeout func_only: %s\ntimeout session: %s"
             % (
                 config._env_timeout,
                 config._env_timeout_method,
                 config._env_timeout_func_only,
+                config._env_timeout_session
             )
         ]
 
@@ -204,6 +237,8 @@ def timeout_setup(item):
 
         def handler(signum, frame):
             __tracebackhide__ = True
+            if params.timeout_session:
+                item.shouldfail = f"Timeout >{params.timeout}s"
             timeout_sigalrm(item, params.timeout)
 
         def cancel():
@@ -265,7 +300,12 @@ def get_env_settings(config):
         func_only = None
     if func_only is not None:
         func_only = _validate_func_only(func_only, "config file")
-    return Settings(timeout, method, func_only or False)
+
+    entire_session = config.getvalue("timeout_session")
+    if entire_session is None:
+        entire_session = bool(config.getini("timeout_session"))
+
+    return Settings(timeout, method, func_only or False, entire_session)
 
 
 def get_func_only_setting(item):
@@ -280,6 +320,19 @@ def get_func_only_setting(item):
     if func_only is None:
         func_only = False
     return func_only
+
+def get_entire_session_setting(session):
+    """ Return the entire_session setting for a session."""
+    return session.config._env_timeout_session
+
+
+def get_scope_setting(item_or_session) -> str:
+    """ Returns the scope for applying the timeout """
+    if get_entire_session_setting(item_or_session):
+        return SESSION
+    elif get_func_only_setting(item_or_session):
+        return FUNCTION_ONLY
+    return ENTIRE_TEST
 
 
 def get_params(item, marker=None):
@@ -298,7 +351,9 @@ def get_params(item, marker=None):
         method = item.config._env_timeout_method
     if func_only is None:
         func_only = item.config._env_timeout_func_only
-    return Settings(timeout, method, func_only)
+    timeout_session = item.config._env_timeout_session
+
+    return Settings(timeout, method, func_only, timeout_session)
 
 
 def _parse_marker(marker):
@@ -335,7 +390,11 @@ def _parse_marker(marker):
         method = None
     if func_only is NOTSET:
         func_only = None
-    return Settings(timeout, method, func_only)
+
+    # Timeout session is not customisable at a marker level
+    timeout_session = None
+
+    return Settings(timeout, method, func_only, timeout_session)
 
 
 def _validate_timeout(timeout, where):

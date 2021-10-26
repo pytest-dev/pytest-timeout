@@ -506,3 +506,24 @@ def test_not_main_thread(testdir):
     result.stdout.fnmatch_lines(
         ["timeout: 1.0s", "timeout method:*", "timeout func_only:*"]
     )
+
+
+def test_session_timeout(testdir):
+    """
+    Setup tests which runs 5 times, with each test taking between 0.5 and 1 second.
+    Set the whole session to timeout after 1.5 seconds, and check that it does.
+    """
+    testdir.makepyfile(
+        """
+        import time
+        from random import random
+        import pytest
+
+        @pytest.mark.parametrize("repeat", range(0, 5))
+        def test_foo(repeat):
+            time.sleep(0.5 + 0.5*random())
+     """
+    )
+    result = testdir.runpytest("--timeout=1.5", "--timeout-session")
+    result.stdout.fnmatch_lines(["*Failed: Timeout >1.5s*"])
+  
