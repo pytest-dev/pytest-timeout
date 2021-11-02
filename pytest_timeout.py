@@ -179,7 +179,7 @@ def is_debugging(trace_func=None):
     if trace_func and inspect.getmodule(trace_func):
         parts = inspect.getmodule(trace_func).__name__.split(".")
         for name in KNOWN_DEBUGGING_MODULES:
-            if name in parts:
+            if any(part.startswith(name) for part in parts):
                 return True
     return False
 
