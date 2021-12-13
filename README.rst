@@ -240,8 +240,8 @@ session using ``--pdb`` or similar.
 Changelog
 =========
 
-Unreleased
------------
+2.0.2
+-----
 
 - Fix debugger detection on OSX, thanks Alexander Pacha.
 
