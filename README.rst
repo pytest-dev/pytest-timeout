@@ -240,6 +240,12 @@ session using ``--pdb`` or similar.
 Changelog
 =========
 
+Unreleased
+-----------
+
+- Get terminal width from shlib instead of deprecated py, thanks
+  Andrew Svetlov.
+
 2.0.2
 -----
 
