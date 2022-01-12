@@ -71,6 +71,8 @@ def pytest_addoption(parser):
 
 
 class TimeoutHooks:
+    """Timeout specific hooks"""
+
     @pytest.hookspec(firstresult=True)
     def pytest_timeout_setup(item):
         """Called at timeout setup.
@@ -93,6 +95,7 @@ class TimeoutHooks:
 
 
 def pytest_addhooks(pluginmanager):
+    """Register timeout-specific hooks"""
     pluginmanager.add_hookspecs(TimeoutHooks)
 
 
