@@ -70,6 +70,32 @@ def pytest_addoption(parser):
     parser.addini("timeout_func_only", FUNC_ONLY_DESC, type="bool")
 
 
+class TimeoutHooks:
+    @pytest.hookspec(firstresult=True)
+    def pytest_timeout_setup(item):
+        """Called at timeout setup.
+
+        'item' is a pytest node to setup timeout for.
+
+        Can be overridden by plugins for alternative timeout implementation strategies.
+
+        """
+
+    @pytest.hookspec(firstresult=True)
+    def pytest_timeout_teardown(item):
+        """Called at timeout teardown.
+
+        'item' is a pytest node which was used for timeout setup.
+
+        Can be overridden by plugins for alternative timeout implementation strategies.
+
+        """
+
+
+def pytest_addhooks(pluginmanager):
+    pluginmanager.add_hookspecs(TimeoutHooks)
+
+
 @pytest.hookimpl
 def pytest_configure(config):
     """Register the marker so it shows up in --markers output."""
@@ -98,12 +124,13 @@ def pytest_runtest_protocol(item):
     teardown, then this hook installs the timeout.  Otherwise
     pytest_runtest_call is used.
     """
+    hooks = item.config.pluginmanager.hook
     func_only = get_func_only_setting(item)
     if func_only is False:
-        timeout_setup(item)
+        hooks.pytest_timeout_setup(item=item)
     yield
     if func_only is False:
-        timeout_teardown(item)
+        hooks.pytest_timeout_teardown(item=item)
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -113,12 +140,13 @@ def pytest_runtest_call(item):
     If the timeout is set on only the test function this hook installs
     the timeout, otherwise pytest_runtest_protocol is used.
     """
+    hooks = item.config.pluginmanager.hook
     func_only = get_func_only_setting(item)
     if func_only is True:
-        timeout_setup(item)
+        hooks.pytest_timeout_setup(item=item)
     yield
     if func_only is True:
-        timeout_teardown(item)
+        hooks.pytest_timeout_teardown(item=item)
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -138,7 +166,8 @@ def pytest_report_header(config):
 @pytest.hookimpl(tryfirst=True)
 def pytest_exception_interact(node):
     """Stop the timeout when pytest enters pdb in post-mortem mode."""
-    timeout_teardown(node)
+    hooks = node.config.pluginmanager.hook
+    hooks.pytest_timeout_teardown(item=node)
 
 
 @pytest.hookimpl
@@ -187,11 +216,12 @@ def is_debugging(trace_func=None):
 SUPPRESS_TIMEOUT = False
 
 
-def timeout_setup(item):
+@pytest.hookimpl(trylast=True)
+def pytest_timeout_setup(item):
     """Setup up a timeout trigger and handler."""
     params = get_params(item)
     if params.timeout is None or params.timeout <= 0:
-        return
+        return True
 
     timeout_method = params.method
     if (
@@ -223,9 +253,11 @@ def timeout_setup(item):
 
         item.cancel_timeout = cancel
         timer.start()
+    return True
 
 
-def timeout_teardown(item):
+@pytest.hookimpl(trylast=True)
+def pytest_timeout_teardown(item):
     """Cancel the timeout trigger if it was set."""
     # When skipping is raised from a pytest_runtest_setup function
     # (as is the case when using the pytest.mark.skipif marker) we
@@ -234,6 +266,7 @@ def timeout_teardown(item):
     cancel = getattr(item, "cancel_timeout", None)
     if cancel:
         cancel()
+    return True
 
 
 def get_env_settings(config):

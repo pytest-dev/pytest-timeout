@@ -506,3 +506,40 @@ def test_not_main_thread(testdir):
     result.stdout.fnmatch_lines(
         ["timeout: 1.0s", "timeout method:*", "timeout func_only:*"]
     )
+
+
+def test_plugin_is_debugging(request):
+    config = request.config
+    plugin = config.pluginmanager.get_plugin("timeout")
+    assert not plugin.is_debugging()
+
+
+def test_plugin_interface(testdir):
+    testdir.makeconftest(
+        """
+     import pytest
+
+     @pytest.mark.tryfirst
+     def pytest_timeout_setup(item):
+         print()
+         print("pytest_timeout_setup")
+         return True
+
+     @pytest.mark.tryfirst
+     def pytest_timeout_teardown(item):
+         print()
+         print("pytest_timeout_teardown")
+         return True
+    """
+    )
+    testdir.makepyfile(
+        """
+     import pytest
+
+     @pytest.mark.timeout(1)
+     def test_foo():
+         pass
+    """
+    )
+    result = testdir.runpytest("-s")
+    result.stdout.fnmatch_lines(["pytest_timeout_setup", "pytest_timeout_teardown"])
