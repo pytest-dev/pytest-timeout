@@ -8,13 +8,13 @@ the test, otherwise os._exit(1) is used.
 """
 import inspect
 import os
+import shutil
 import signal
 import sys
 import threading
 import traceback
 from collections import namedtuple
 
-import py
 import pytest
 
 
@@ -480,7 +480,7 @@ def write_title(title, stream=None, sep="~"):
     """
     if stream is None:
         stream = sys.stderr
-    width = py.io.get_terminal_width()
+    width, height = shutil.get_terminal_size()
     fill = int((width - len(title) - 2) / 2)
     line = " ".join([sep * fill, title, sep * fill])
     if len(line) < width:
