@@ -237,6 +237,50 @@ debugging frameworks modules OR if pytest itself drops you into a pdb
 session using ``--pdb`` or similar.
 
 
+Extending pytest-timeout with plugings
+======================================
+
+``pytest-timeout`` provides two hooks that can be used for extending the tool.  There
+hooks are used for for setting the timeout timer and cancelling it it the timeout is not
+reached.
+
+For example, ``pytest-asyncio`` can provide asyncio-specific code that generates better
+traceback and points on timed out ``await`` instead of the running loop ieration.
+
+See `pytest hooks documentation
+<https://docs.pytest.org/en/latest/how-to/writing_hook_functions.html>`_ for more info
+regarding to use custom hooks.
+
+``pytest_timeout_set_timer``
+----------------------------
+
+    @pytest.hookspec(firstresult=True)
+    def pytest_timeout_set_timer(item):
+        """Called at timeout setup.
+
+        'item' is a pytest node to setup timeout for.
+
+        Can be overridden by plugins for alternative timeout implementation strategies.
+
+        """
+
+
+``pytest_timeout_cancel_timer``
+-------------------------------
+
+
+    @pytest.hookspec(firstresult=True)
+    def pytest_timeout_cancel_timer(item):
+        """Called at timeout teardown.
+
+        'item' is a pytest node which was used for timeout setup.
+
+        Can be overridden by plugins for alternative timeout implementation strategies.
+
+        """
+
+
+
 Changelog
 =========
 

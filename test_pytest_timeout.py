@@ -508,27 +508,21 @@ def test_not_main_thread(testdir):
     )
 
 
-def test_plugin_is_debugging(request):
-    config = request.config
-    plugin = config.pluginmanager.get_plugin("timeout")
-    assert not plugin.is_debugging()
-
-
 def test_plugin_interface(testdir):
     testdir.makeconftest(
         """
      import pytest
 
      @pytest.mark.tryfirst
-     def pytest_timeout_setup(item):
+     def pytest_timeout_set_timer(item):
          print()
-         print("pytest_timeout_setup")
+         print("pytest_timeout_set_timer")
          return True
 
      @pytest.mark.tryfirst
-     def pytest_timeout_teardown(item):
+     def pytest_timeout_cancel_timer(item):
          print()
-         print("pytest_timeout_teardown")
+         print("pytest_timeout_cancel_timer")
          return True
     """
     )
@@ -542,4 +536,9 @@ def test_plugin_interface(testdir):
     """
     )
     result = testdir.runpytest("-s")
-    result.stdout.fnmatch_lines(["pytest_timeout_setup", "pytest_timeout_teardown"])
+    result.stdout.fnmatch_lines(
+        [
+            "pytest_timeout_set_timer",
+            "pytest_timeout_cancel_timer",
+        ]
+    )
