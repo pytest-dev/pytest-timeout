@@ -255,15 +255,36 @@ regarding to use custom hooks.
 ----------------------------
 
     @pytest.hookspec(firstresult=True)
-    def pytest_timeout_set_timer(item):
+    def pytest_timeout_set_timer(item, settings):
         """Called at timeout setup.
 
         'item' is a pytest node to setup timeout for.
+
+        'settings' is Settings namedtuple (described below).
 
         Can be overridden by plugins for alternative timeout implementation strategies.
 
         """
 
+
+``Settings``
+------------
+
+When ``pytest_timeout_set_timer`` is called, ``settings`` argument is passed.
+
+The argument has ``Settings`` namedtuple type with the following fields:
+
++-----------+-------+--------------------------------------------------------+
+|Attribute  | Index | Value                                                  |
++===========+=======+========================================================+
+| timeout   | 0     | timeout in seconds or ``None`` for no timeout          |
++-----------+-------+--------------------------------------------------------+
+| method    | 1     | Method mechanism,                                      |
+|           |       | ``'signal'`` and ``'thread'`` are supported by default |
++-----------+-------+--------------------------------------------------------+
+| func_only | 2     | Apply timeout to test function only if ``True``,       |
+|           |       |  wrap all test function and its fixtures otherwise     |
++-----------+-------+--------------------------------------------------------+
 
 ``pytest_timeout_cancel_timer``
 -------------------------------
@@ -279,6 +300,20 @@ regarding to use custom hooks.
 
         """
 
+``is_debugging``
+----------------
+
+The the timeout occurs, user can open the debugger session. In this case, the timeout
+should be discarded.  A custom hook can check this case by calling ``is_debugging()``
+function::
+
+    import pytest
+    import pytest_timeout
+
+    def on_timeout():
+        if pytest_timeout.is_debugging():
+            return
+        pytest.fail("+++ Timeout +++")
 
 
 Changelog

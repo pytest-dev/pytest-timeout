@@ -514,7 +514,7 @@ def test_plugin_interface(testdir):
      import pytest
 
      @pytest.mark.tryfirst
-     def pytest_timeout_set_timer(item):
+     def pytest_timeout_set_timer(item, settings):
          print()
          print("pytest_timeout_set_timer")
          return True

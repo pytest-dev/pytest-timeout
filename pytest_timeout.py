@@ -18,7 +18,7 @@ from collections import namedtuple
 import pytest
 
 
-__all__ = ("is_debugging",)
+__all__ = ("is_debugging", "Settings")
 
 
 HAVE_SIGALRM = hasattr(signal, "SIGALRM")
@@ -77,7 +77,7 @@ class TimeoutHooks:
     """Timeout specific hooks."""
 
     @pytest.hookspec(firstresult=True)
-    def pytest_timeout_set_timer(item):
+    def pytest_timeout_set_timer(item, settings):
         """Called at timeout setup.
 
         'item' is a pytest node to setup timeout for.
@@ -131,11 +131,12 @@ def pytest_runtest_protocol(item):
     pytest_runtest_call is used.
     """
     hooks = item.config.pluginmanager.hook
-    func_only = get_func_only_setting(item)
-    if func_only is False:
-        hooks.pytest_timeout_set_timer(item=item)
+    settings = _get_item_settings(item)
+    is_timeout = settings.timeout is not None and settings.timeout > 0
+    if is_timeout and settings.func_only is False:
+        hooks.pytest_timeout_set_timer(item=item, settings=settings)
     yield
-    if func_only is False:
+    if is_timeout and settings.func_only is False:
         hooks.pytest_timeout_cancel_timer(item=item)
 
 
@@ -147,11 +148,12 @@ def pytest_runtest_call(item):
     the timeout, otherwise pytest_runtest_protocol is used.
     """
     hooks = item.config.pluginmanager.hook
-    func_only = get_func_only_setting(item)
-    if func_only is True:
-        hooks.pytest_timeout_set_timer(item=item)
+    settings = _get_item_settings(item)
+    is_timeout = settings.timeout is not None and settings.timeout > 0
+    if is_timeout and settings.func_only is True:
+        hooks.pytest_timeout_set_timer(item=item, settings=settings)
     yield
-    if func_only is True:
+    if is_timeout and settings.func_only is True:
         hooks.pytest_timeout_cancel_timer(item=item)
 
 
@@ -223,13 +225,9 @@ SUPPRESS_TIMEOUT = False
 
 
 @pytest.hookimpl(trylast=True)
-def pytest_timeout_set_timer(item):
+def pytest_timeout_set_timer(item, settings):
     """Setup up a timeout trigger and handler."""
-    params = get_params(item)
-    if params.timeout is None or params.timeout <= 0:
-        return True
-
-    timeout_method = params.method
+    timeout_method = settings.method
     if (
         timeout_method == "signal"
         and threading.current_thread() is not threading.main_thread()
@@ -240,7 +238,7 @@ def pytest_timeout_set_timer(item):
 
         def handler(signum, frame):
             __tracebackhide__ = True
-            timeout_sigalrm(item, params.timeout)
+            timeout_sigalrm(item, settings.timeout)
 
         def cancel():
             signal.setitimer(signal.ITIMER_REAL, 0)
@@ -248,9 +246,11 @@ def pytest_timeout_set_timer(item):
 
         item.cancel_timeout = cancel
         signal.signal(signal.SIGALRM, handler)
-        signal.setitimer(signal.ITIMER_REAL, params.timeout)
+        signal.setitimer(signal.ITIMER_REAL, settings.timeout)
     elif timeout_method == "thread":
-        timer = threading.Timer(params.timeout, timeout_timer, (item, params.timeout))
+        timer = threading.Timer(
+            settings.timeout, timeout_timer, (item, settings.timeout)
+        )
         timer.name = "%s %s" % (__name__, item.nodeid)
 
         def cancel():
@@ -307,21 +307,7 @@ def get_env_settings(config):
     return Settings(timeout, method, func_only or False)
 
 
-def get_func_only_setting(item):
-    """Return the func_only setting for an item."""
-    func_only = None
-    marker = item.get_closest_marker("timeout")
-    if marker:
-        settings = get_params(item, marker=marker)
-        func_only = _validate_func_only(settings.func_only, "marker")
-    if func_only is None:
-        func_only = item.config._env_timeout_func_only
-    if func_only is None:
-        func_only = False
-    return func_only
-
-
-def get_params(item, marker=None):
+def _get_item_settings(item, marker=None):
     """Return (timeout, method) for an item."""
     timeout = method = func_only = None
     if not marker:
@@ -337,6 +323,8 @@ def get_params(item, marker=None):
         method = item.config._env_timeout_method
     if func_only is None:
         func_only = item.config._env_timeout_func_only
+    if func_only is None:
+        func_only = False
     return Settings(timeout, method, func_only)
 
 
