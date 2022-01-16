@@ -506,3 +506,39 @@ def test_not_main_thread(testdir):
     result.stdout.fnmatch_lines(
         ["timeout: 1.0s", "timeout method:*", "timeout func_only:*"]
     )
+
+
+def test_plugin_interface(testdir):
+    testdir.makeconftest(
+        """
+     import pytest
+
+     @pytest.mark.tryfirst
+     def pytest_timeout_set_timer(item, settings):
+         print()
+         print("pytest_timeout_set_timer")
+         return True
+
+     @pytest.mark.tryfirst
+     def pytest_timeout_cancel_timer(item):
+         print()
+         print("pytest_timeout_cancel_timer")
+         return True
+    """
+    )
+    testdir.makepyfile(
+        """
+     import pytest
+
+     @pytest.mark.timeout(1)
+     def test_foo():
+         pass
+    """
+    )
+    result = testdir.runpytest("-s")
+    result.stdout.fnmatch_lines(
+        [
+            "pytest_timeout_set_timer",
+            "pytest_timeout_cancel_timer",
+        ]
+    )

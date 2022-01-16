@@ -237,6 +237,85 @@ debugging frameworks modules OR if pytest itself drops you into a pdb
 session using ``--pdb`` or similar.
 
 
+Extending pytest-timeout with plugings
+======================================
+
+``pytest-timeout`` provides two hooks that can be used for extending the tool.  These
+hooks are used for for setting the timeout timer and cancelling it it the timeout is not
+reached.
+
+For example, ``pytest-asyncio`` can provide asyncio-specific code that generates better
+traceback and points on timed out ``await`` instead of the running loop ieration.
+
+See `pytest hooks documentation
+<https://docs.pytest.org/en/latest/how-to/writing_hook_functions.html>`_ for more info
+regarding to use custom hooks.
+
+``pytest_timeout_set_timer``
+----------------------------
+
+    @pytest.hookspec(firstresult=True)
+    def pytest_timeout_set_timer(item, settings):
+        """Called at timeout setup.
+
+        'item' is a pytest node to setup timeout for.
+
+        'settings' is Settings namedtuple (described below).
+
+        Can be overridden by plugins for alternative timeout implementation strategies.
+
+        """
+
+
+``Settings``
+------------
+
+When ``pytest_timeout_set_timer`` is called, ``settings`` argument is passed.
+
+The argument has ``Settings`` namedtuple type with the following fields:
+
++-----------+-------+--------------------------------------------------------+
+|Attribute  | Index | Value                                                  |
++===========+=======+========================================================+
+| timeout   | 0     | timeout in seconds or ``None`` for no timeout          |
++-----------+-------+--------------------------------------------------------+
+| method    | 1     | Method mechanism,                                      |
+|           |       | ``'signal'`` and ``'thread'`` are supported by default |
++-----------+-------+--------------------------------------------------------+
+| func_only | 2     | Apply timeout to test function only if ``True``,       |
+|           |       |  wrap all test function and its fixtures otherwise     |
++-----------+-------+--------------------------------------------------------+
+
+``pytest_timeout_cancel_timer``
+-------------------------------
+
+
+    @pytest.hookspec(firstresult=True)
+    def pytest_timeout_cancel_timer(item):
+        """Called at timeout teardown.
+
+        'item' is a pytest node which was used for timeout setup.
+
+        Can be overridden by plugins for alternative timeout implementation strategies.
+
+        """
+
+``is_debugging``
+----------------
+
+When the timeout occurs, user can open the debugger session. In this case, the timeout
+should be discarded.  A custom hook can check this case by calling ``is_debugging()``
+function::
+
+    import pytest
+    import pytest_timeout
+
+    def on_timeout():
+        if pytest_timeout.is_debugging():
+            return
+        pytest.fail("+++ Timeout +++")
+
+
 Changelog
 =========
 
@@ -245,6 +324,8 @@ Unreleased
 
 - Get terminal width from shutil instead of deprecated py, thanks
   Andrew Svetlov.
+- Add an API for extending ``pytest-timeout`` functionality
+  with third-party plugins, thanks Andrew Svetlov.
 
 2.0.2
 -----

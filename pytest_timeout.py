@@ -18,6 +18,9 @@ from collections import namedtuple
 import pytest
 
 
+__all__ = ("is_debugging", "Settings")
+
+
 HAVE_SIGALRM = hasattr(signal, "SIGALRM")
 if HAVE_SIGALRM:
     DEFAULT_METHOD = "signal"
@@ -70,6 +73,35 @@ def pytest_addoption(parser):
     parser.addini("timeout_func_only", FUNC_ONLY_DESC, type="bool")
 
 
+class TimeoutHooks:
+    """Timeout specific hooks."""
+
+    @pytest.hookspec(firstresult=True)
+    def pytest_timeout_set_timer(item, settings):
+        """Called at timeout setup.
+
+        'item' is a pytest node to setup timeout for.
+
+        Can be overridden by plugins for alternative timeout implementation strategies.
+
+        """
+
+    @pytest.hookspec(firstresult=True)
+    def pytest_timeout_cancel_timer(item):
+        """Called at timeout teardown.
+
+        'item' is a pytest node which was used for timeout setup.
+
+        Can be overridden by plugins for alternative timeout implementation strategies.
+
+        """
+
+
+def pytest_addhooks(pluginmanager):
+    """Register timeout-specific hooks."""
+    pluginmanager.add_hookspecs(TimeoutHooks)
+
+
 @pytest.hookimpl
 def pytest_configure(config):
     """Register the marker so it shows up in --markers output."""
@@ -98,12 +130,14 @@ def pytest_runtest_protocol(item):
     teardown, then this hook installs the timeout.  Otherwise
     pytest_runtest_call is used.
     """
-    func_only = get_func_only_setting(item)
-    if func_only is False:
-        timeout_setup(item)
+    hooks = item.config.pluginmanager.hook
+    settings = _get_item_settings(item)
+    is_timeout = settings.timeout is not None and settings.timeout > 0
+    if is_timeout and settings.func_only is False:
+        hooks.pytest_timeout_set_timer(item=item, settings=settings)
     yield
-    if func_only is False:
-        timeout_teardown(item)
+    if is_timeout and settings.func_only is False:
+        hooks.pytest_timeout_cancel_timer(item=item)
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -113,12 +147,14 @@ def pytest_runtest_call(item):
     If the timeout is set on only the test function this hook installs
     the timeout, otherwise pytest_runtest_protocol is used.
     """
-    func_only = get_func_only_setting(item)
-    if func_only is True:
-        timeout_setup(item)
+    hooks = item.config.pluginmanager.hook
+    settings = _get_item_settings(item)
+    is_timeout = settings.timeout is not None and settings.timeout > 0
+    if is_timeout and settings.func_only is True:
+        hooks.pytest_timeout_set_timer(item=item, settings=settings)
     yield
-    if func_only is True:
-        timeout_teardown(item)
+    if is_timeout and settings.func_only is True:
+        hooks.pytest_timeout_cancel_timer(item=item)
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -138,7 +174,8 @@ def pytest_report_header(config):
 @pytest.hookimpl(tryfirst=True)
 def pytest_exception_interact(node):
     """Stop the timeout when pytest enters pdb in post-mortem mode."""
-    timeout_teardown(node)
+    hooks = node.config.pluginmanager.hook
+    hooks.pytest_timeout_cancel_timer(item=node)
 
 
 @pytest.hookimpl
@@ -187,13 +224,10 @@ def is_debugging(trace_func=None):
 SUPPRESS_TIMEOUT = False
 
 
-def timeout_setup(item):
+@pytest.hookimpl(trylast=True)
+def pytest_timeout_set_timer(item, settings):
     """Setup up a timeout trigger and handler."""
-    params = get_params(item)
-    if params.timeout is None or params.timeout <= 0:
-        return
-
-    timeout_method = params.method
+    timeout_method = settings.method
     if (
         timeout_method == "signal"
         and threading.current_thread() is not threading.main_thread()
@@ -204,7 +238,7 @@ def timeout_setup(item):
 
         def handler(signum, frame):
             __tracebackhide__ = True
-            timeout_sigalrm(item, params.timeout)
+            timeout_sigalrm(item, settings.timeout)
 
         def cancel():
             signal.setitimer(signal.ITIMER_REAL, 0)
@@ -212,9 +246,11 @@ def timeout_setup(item):
 
         item.cancel_timeout = cancel
         signal.signal(signal.SIGALRM, handler)
-        signal.setitimer(signal.ITIMER_REAL, params.timeout)
+        signal.setitimer(signal.ITIMER_REAL, settings.timeout)
     elif timeout_method == "thread":
-        timer = threading.Timer(params.timeout, timeout_timer, (item, params.timeout))
+        timer = threading.Timer(
+            settings.timeout, timeout_timer, (item, settings.timeout)
+        )
         timer.name = "%s %s" % (__name__, item.nodeid)
 
         def cancel():
@@ -223,9 +259,11 @@ def timeout_setup(item):
 
         item.cancel_timeout = cancel
         timer.start()
+    return True
 
 
-def timeout_teardown(item):
+@pytest.hookimpl(trylast=True)
+def pytest_timeout_cancel_timer(item):
     """Cancel the timeout trigger if it was set."""
     # When skipping is raised from a pytest_runtest_setup function
     # (as is the case when using the pytest.mark.skipif marker) we
@@ -234,6 +272,7 @@ def timeout_teardown(item):
     cancel = getattr(item, "cancel_timeout", None)
     if cancel:
         cancel()
+    return True
 
 
 def get_env_settings(config):
@@ -268,21 +307,7 @@ def get_env_settings(config):
     return Settings(timeout, method, func_only or False)
 
 
-def get_func_only_setting(item):
-    """Return the func_only setting for an item."""
-    func_only = None
-    marker = item.get_closest_marker("timeout")
-    if marker:
-        settings = get_params(item, marker=marker)
-        func_only = _validate_func_only(settings.func_only, "marker")
-    if func_only is None:
-        func_only = item.config._env_timeout_func_only
-    if func_only is None:
-        func_only = False
-    return func_only
-
-
-def get_params(item, marker=None):
+def _get_item_settings(item, marker=None):
     """Return (timeout, method) for an item."""
     timeout = method = func_only = None
     if not marker:
@@ -298,6 +323,8 @@ def get_params(item, marker=None):
         method = item.config._env_timeout_method
     if func_only is None:
         func_only = item.config._env_timeout_func_only
+    if func_only is None:
+        func_only = False
     return Settings(timeout, method, func_only)
 
 
