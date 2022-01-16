@@ -324,6 +324,8 @@ Unreleased
 
 - Get terminal width from shlib instead of deprecated py, thanks
   Andrew Svetlov.
+- Add an API for extending ``pytest-timeout`` functionality
+  with third-party plugins, thanks Andrew Svetlov.
 
 2.0.2
 -----
