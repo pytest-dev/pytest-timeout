@@ -303,7 +303,7 @@ The argument has ``Settings`` namedtuple type with the following fields:
 ``is_debugging``
 ----------------
 
-The the timeout occurs, user can open the debugger session. In this case, the timeout
+When the timeout occurs, user can open the debugger session. In this case, the timeout
 should be discarded.  A custom hook can check this case by calling ``is_debugging()``
 function::
 
