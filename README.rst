@@ -240,7 +240,7 @@ session using ``--pdb`` or similar.
 Extending pytest-timeout with plugings
 ======================================
 
-``pytest-timeout`` provides two hooks that can be used for extending the tool.  There
+``pytest-timeout`` provides two hooks that can be used for extending the tool.  These
 hooks are used for for setting the timeout timer and cancelling it it the timeout is not
 reached.
 
