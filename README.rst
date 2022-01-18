@@ -319,8 +319,8 @@ function::
 Changelog
 =========
 
-Unreleased
------------
+2.1.0
+-----
 
 - Get terminal width from shutil instead of deprecated py, thanks
   Andrew Svetlov.
