@@ -237,8 +237,8 @@ debugging frameworks modules OR if pytest itself drops you into a pdb
 session using ``--pdb`` or similar.
 
 
-Extending pytest-timeout with plugings
-======================================
+Extending pytest-timeout with plugins
+=====================================
 
 ``pytest-timeout`` provides two hooks that can be used for extending the tool.  These
 hooks are used for for setting the timeout timer and cancelling it it the timeout is not
