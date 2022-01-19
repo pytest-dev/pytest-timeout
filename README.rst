@@ -313,6 +313,7 @@ function:
    import pytest
    import pytest_timeout
 
+
    def on_timeout():
        if pytest_timeout.is_debugging():
            return
