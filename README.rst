@@ -2,7 +2,7 @@
 pytest-timeout
 ==============
 
-|python| |version| |anaconda| |ci|
+|python| |version| |anaconda| |ci| |pre-commit|
 
 .. |version| image:: https://img.shields.io/pypi/v/pytest-timeout.svg
   :target: https://pypi.python.org/pypi/pytest-timeout
@@ -15,6 +15,9 @@ pytest-timeout
 
 .. |python| image:: https://img.shields.io/pypi/pyversions/pytest-timeout.svg
   :target: https://pypi.python.org/pypi/pytest-timeout/
+
+.. |pre-commit| image:: https://results.pre-commit.ci/badge/github/pytest-dev/pytest-timeout/master.svg
+   :target: https://results.pre-commit.ci/latest/github/pytest-dev/pytest-timeout/master
 
 **This is not the timeout you are looking for!**
 
