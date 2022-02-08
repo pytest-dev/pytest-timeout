@@ -352,7 +352,7 @@ Changelog
   thread to avoid crash.
 - Fix pycharm debugger detection so timeouts are not triggered during
   debugger usage.
-- Dropped support for Python 2, minimum pytest version upported is 5.0.0.
+- Dropped support for Python 2, minimum pytest version supported is 5.0.0.
 
 1.4.2
 -----
@@ -387,7 +387,7 @@ Changelog
 1.3.2
 -----
 
-- This changelog was ommitted for the 1.3.2 release and was added
+- This changelog was omitted for the 1.3.2 release and was added
   afterwards.  Apologies for the confusion.
 - Fix pytest 3.7.3 compatibility.  The capture API had changed
   slightly and this needed fixing.  Thanks Bruno Oliveira for the
