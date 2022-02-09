@@ -482,7 +482,7 @@ def write_title(title, stream=None, sep="~"):
 def write(text, stream=None):
     """Write text to stream.
 
-    Pretty stupid really, only here for symetry with .write_title().
+    Pretty stupid really, only here for symmetry with .write_title().
     """
     if stream is None:
         stream = sys.stderr
