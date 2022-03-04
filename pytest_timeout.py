@@ -384,7 +384,7 @@ def _validate_method(method, where):
 
 def _validate_func_only(func_only, where):
     if func_only is None:
-        return False
+        return None
     if not isinstance(func_only, bool):
         raise ValueError("Invalid func_only value %s from %s" % (func_only, where))
     return func_only
