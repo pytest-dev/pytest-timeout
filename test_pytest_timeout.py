@@ -355,7 +355,30 @@ def test_ini_timeout_func_only(testdir):
         @pytest.fixture
         def slow():
             time.sleep(2)
+        def test_foo(slow):
+            pass
+    """
+    )
+    testdir.makeini(
+        """
+        [pytest]
+        timeout = 1
+        timeout_func_only = true
+    """
+    )
+    result = testdir.runpytest()
+    assert result.ret == 0
 
+
+def test_ini_timeout_func_only_marker_override(testdir):
+    testdir.makepyfile(
+        """
+        import time, pytest
+
+        @pytest.fixture
+        def slow():
+            time.sleep(2)
+        @pytest.mark.timeout(1.5) 
         def test_foo(slow):
             pass
     """
