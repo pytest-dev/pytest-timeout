@@ -378,7 +378,7 @@ def test_ini_timeout_func_only_marker_override(testdir):
         @pytest.fixture
         def slow():
             time.sleep(2)
-        @pytest.mark.timeout(1.5) 
+        @pytest.mark.timeout(1.5)
         def test_foo(slow):
             pass
     """
