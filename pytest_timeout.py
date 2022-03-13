@@ -47,6 +47,29 @@ KNOWN_DEBUGGING_MODULES = {"pydevd", "bdb", "pydevd_frame_evaluator"}
 Settings = namedtuple("Settings", ["timeout", "method", "func_only"])
 
 
+def time_unit(timeout: str) -> float:
+    if not timeout:
+        raise ValueError
+
+    try:
+        return float(timeout)
+    except ValueError:
+        pass
+
+    unit = timeout[-1]
+    duration = float(timeout[:-1])
+    if unit == "s":
+        return duration
+    if unit == "m":
+        return duration*60
+    if unit == "h":
+        return duration*3600
+    if unit == "d":
+        return duration*86400
+
+    raise ValueError
+
+
 @pytest.hookimpl
 def pytest_addoption(parser):
     """Add options to control the timeout plugin."""
@@ -54,7 +77,7 @@ def pytest_addoption(parser):
         "timeout",
         "Interrupt test run and dump stacks of all threads after a test times out",
     )
-    group.addoption("--timeout", type=float, help=TIMEOUT_DESC)
+    group.addoption("--timeout", type=time_unit, help=TIMEOUT_DESC)
     group.addoption(
         "--timeout_method",
         action="store",
@@ -369,7 +392,7 @@ def _validate_timeout(timeout, where):
     if timeout is None:
         return None
     try:
-        return float(timeout)
+        return time_unit(timeout)
     except ValueError:
         raise ValueError("Invalid timeout %s from %s" % (timeout, where))
 
