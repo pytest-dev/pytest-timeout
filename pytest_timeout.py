@@ -61,11 +61,11 @@ def time_unit(timeout: str) -> float:
     if unit == "s":
         return duration
     if unit == "m":
-        return duration*60
+        return duration * 60
     if unit == "h":
-        return duration*3600
+        return duration * 3600
     if unit == "d":
-        return duration*86400
+        return duration * 86400
 
     raise ValueError
 
