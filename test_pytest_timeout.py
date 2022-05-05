@@ -87,7 +87,7 @@ def test_cov(testdir):
     """
     )
     result = testdir.runpytest(
-        "--timeout=1", "--cov=test_cov.py", "--timeout-method=thread"
+        "--timeout=1", "--cov=test_cov", "--timeout-method=thread"
     )
     result.stderr.fnmatch_lines(
         [
@@ -151,7 +151,7 @@ def test_fix_setup(meth, scope, testdir):
             scope=scope
         )
     )
-    result = testdir.runpytest("--timeout=1", "--timeout-method={}".format(meth))
+    result = testdir.runpytest("--timeout=1", f"--timeout-method={meth}")
     assert result.ret > 0
     assert "Timeout" in result.stdout.str() + result.stderr.str()
 
@@ -198,7 +198,7 @@ def test_fix_finalizer(meth, scope, testdir):
                 pass
     """
     )
-    result = testdir.runpytest("--timeout=1", "-s", "--timeout-method={}".format(meth))
+    result = testdir.runpytest("--timeout=1", "-s", f"--timeout-method={meth}")
     assert result.ret > 0
     assert "Timeout" in result.stdout.str() + result.stderr.str()
 
@@ -355,7 +355,30 @@ def test_ini_timeout_func_only(testdir):
         @pytest.fixture
         def slow():
             time.sleep(2)
+        def test_foo(slow):
+            pass
+    """
+    )
+    testdir.makeini(
+        """
+        [pytest]
+        timeout = 1
+        timeout_func_only = true
+    """
+    )
+    result = testdir.runpytest()
+    assert result.ret == 0
 
+
+def test_ini_timeout_func_only_marker_override(testdir):
+    testdir.makepyfile(
+        """
+        import time, pytest
+
+        @pytest.fixture
+        def slow():
+            time.sleep(2)
+        @pytest.mark.timeout(1.5)
         def test_foo(slow):
             pass
     """
@@ -482,3 +505,63 @@ def test_is_debugging(monkeypatch):
     module.custom_trace = custom_trace
 
     assert pytest_timeout.is_debugging(custom_trace)
+
+
+def test_not_main_thread(testdir):
+    testdir.makepyfile(
+        """
+        import threading
+        import pytest_timeout
+
+        current_timeout_setup = pytest_timeout.timeout_setup
+
+        def new_timeout_setup(item):
+            threading.Thread(
+                target=current_timeout_setup, args=(item),
+            ).join()
+
+        pytest_timeout.timeout_setup = new_timeout_setup
+
+        def test_x(): pass
+    """
+    )
+    result = testdir.runpytest("--timeout=1")
+    result.stdout.fnmatch_lines(
+        ["timeout: 1.0s", "timeout method:*", "timeout func_only:*"]
+    )
+
+
+def test_plugin_interface(testdir):
+    testdir.makeconftest(
+        """
+     import pytest
+
+     @pytest.mark.tryfirst
+     def pytest_timeout_set_timer(item, settings):
+         print()
+         print("pytest_timeout_set_timer")
+         return True
+
+     @pytest.mark.tryfirst
+     def pytest_timeout_cancel_timer(item):
+         print()
+         print("pytest_timeout_cancel_timer")
+         return True
+    """
+    )
+    testdir.makepyfile(
+        """
+     import pytest
+
+     @pytest.mark.timeout(1)
+     def test_foo():
+         pass
+    """
+    )
+    result = testdir.runpytest("-s")
+    result.stdout.fnmatch_lines(
+        [
+            "pytest_timeout_set_timer",
+            "pytest_timeout_cancel_timer",
+        ]
+    )

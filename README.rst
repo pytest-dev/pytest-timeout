@@ -2,7 +2,7 @@
 pytest-timeout
 ==============
 
-|python| |version| |anaconda| |ci|
+|python| |version| |anaconda| |ci| |pre-commit|
 
 .. |version| image:: https://img.shields.io/pypi/v/pytest-timeout.svg
   :target: https://pypi.python.org/pypi/pytest-timeout
@@ -15,6 +15,9 @@ pytest-timeout
 
 .. |python| image:: https://img.shields.io/pypi/pyversions/pytest-timeout.svg
   :target: https://pypi.python.org/pypi/pytest-timeout/
+
+.. |pre-commit| image:: https://results.pre-commit.ci/badge/github/pytest-dev/pytest-timeout/master.svg
+   :target: https://results.pre-commit.ci/latest/github/pytest-dev/pytest-timeout/master
 
 **This is not the timeout you are looking for!**
 
@@ -43,9 +46,8 @@ hangs.
    stage.  See below for detailed information on the timeout methods
    and their side-effects.
 
-The pytest-timeout plugin has been tested on python 2.7 or higher,
-including 3.X, pypy and pypy3.  See tox.ini for currently tested
-versions.
+The pytest-timeout plugin has been tested on Python 3.6 and higher,
+including PyPy3.  See tox.ini for currently tested versions.
 
 
 Usage
@@ -62,8 +64,10 @@ terminated::
    pytest --timeout=300
 
 Furthermore you can also use a decorator to set the timeout for an
-individual test.  If combined with the ```--timeout``` flag this will
-override the timeout for this individual test::
+individual test.  If combined with the ``--timeout`` flag this will
+override the timeout for this individual test:
+
+.. code:: python
 
    @pytest.mark.timeout(60)
    def test_foo():
@@ -75,7 +79,9 @@ timeout is always specified as a number of seconds, and can be
 defined in a number of ways, from low to high priority:
 
 1. You can set a global timeout in the `pytest configuration file`__
-   using the ``timeout`` option.  E.g.::
+   using the ``timeout`` option.  E.g.:
+
+   .. code:: ini
 
       [pytest]
       timeout = 300
@@ -87,7 +93,9 @@ defined in a number of ways, from low to high priority:
    overriding both the environment variable and configuration option.
 
 4. Using the ``timeout`` marker_ on test items you can specify
-   timeouts on a per-item basis::
+   timeouts on a per-item basis:
+
+   .. code:: python
 
       @pytest.mark.timeout(300)
       def test_foo():
@@ -141,8 +149,8 @@ signal
 
 If the system supports the SIGALRM signal the *signal* method will be
 used by default.  This method schedules an alarm when the test item
-starts and cancels it when it finishes.  If the alarm expires during
-the test the signal handler will dump the stack of any other threads
+starts and cancels the alarm when the test finishes.  If the alarm expires
+during the test the signal handler will dump the stack of any other threads
 running to stderr and use ``pytest.fail()`` to interrupt the test.
 
 The benefit of this method is that the pytest process is not
@@ -160,9 +168,11 @@ The timeout method can be specified by using the ``timeout_method``
 option in the `pytest configuration file`__, the ``--timeout_method``
 command line parameter or the ``timeout`` marker_.  Simply set their
 value to the string ``thread`` or ``signal`` to override the default
-method.  On a marker this is done using the ``method`` keyword::
+method.  On a marker this is done using the ``method`` keyword:
 
-   @pytest.mark.timeout(method='thread')
+.. code:: python
+
+   @pytest.mark.timeout(method="thread")
    def test_foo():
        pass
 
@@ -173,7 +183,9 @@ __ https://docs.pytest.org/en/latest/reference.html#ini-options-ref
 The ``timeout`` Marker API
 ==========================
 
-The full signature of the timeout marker is::
+The full signature of the timeout marker is:
+
+.. code:: python
 
    pytest.mark.timeout(timeout=0, method=DEFAULT_METHOD)
 
@@ -201,6 +213,18 @@ been executed, which could result in a broken test-suite anyway.  In
 case of doubt the thread method which terminates the entire process
 might result in clearer output.
 
+Avoiding timeouts in Fixtures
+=============================
+
+The timeout applies to the entire test including any fixtures which
+may need to be setup or torn down for the test (the exact affected
+fixtures depends on which scope they are and whether other tests will
+still use the same fixture).  If the timeouts really are too short to
+include fixture durations, firstly make the timeouts larger ;).  If
+this really isn't an option a ``timeout_func_only`` boolean setting
+exists which can be set in the pytest ini configuration file, as
+documented in ``pytest --help``.
+
 
 Debugger Detection
 ==================
@@ -213,11 +237,122 @@ The way this plugin detects whether or not a debugging session is
 active is by checking if a trace function is set and if one is, it
 check to see if the module it belongs to is present in a set of known
 debugging frameworks modules OR if pytest itself drops you into a pdb
-session using ```--pdb``` or similar.
+session using ``--pdb`` or similar.
+
+
+Extending pytest-timeout with plugins
+=====================================
+
+``pytest-timeout`` provides two hooks that can be used for extending the tool.  These
+hooks are used for for setting the timeout timer and cancelling it it the timeout is not
+reached.
+
+For example, ``pytest-asyncio`` can provide asyncio-specific code that generates better
+traceback and points on timed out ``await`` instead of the running loop ieration.
+
+See `pytest hooks documentation
+<https://docs.pytest.org/en/latest/how-to/writing_hook_functions.html>`_ for more info
+regarding to use custom hooks.
+
+``pytest_timeout_set_timer``
+----------------------------
+
+.. code:: python
+
+   @pytest.hookspec(firstresult=True)
+   def pytest_timeout_set_timer(item, settings):
+       """Called at timeout setup.
+
+       'item' is a pytest node to setup timeout for.
+
+       'settings' is Settings namedtuple (described below).
+
+       Can be overridden by plugins for alternative timeout implementation strategies.
+       """
+
+
+``Settings``
+------------
+
+When ``pytest_timeout_set_timer`` is called, ``settings`` argument is passed.
+
+The argument has ``Settings`` namedtuple type with the following fields:
+
++-----------+-------+--------------------------------------------------------+
+|Attribute  | Index | Value                                                  |
++===========+=======+========================================================+
+| timeout   | 0     | timeout in seconds or ``None`` for no timeout          |
++-----------+-------+--------------------------------------------------------+
+| method    | 1     | Method mechanism,                                      |
+|           |       | ``'signal'`` and ``'thread'`` are supported by default |
++-----------+-------+--------------------------------------------------------+
+| func_only | 2     | Apply timeout to test function only if ``True``,       |
+|           |       |  wrap all test function and its fixtures otherwise     |
++-----------+-------+--------------------------------------------------------+
+
+``pytest_timeout_cancel_timer``
+-------------------------------
+
+.. code:: python
+
+   @pytest.hookspec(firstresult=True)
+   def pytest_timeout_cancel_timer(item):
+       """Called at timeout teardown.
+
+       'item' is a pytest node which was used for timeout setup.
+
+       Can be overridden by plugins for alternative timeout implementation strategies.
+       """
+
+``is_debugging``
+----------------
+
+When the timeout occurs, user can open the debugger session. In this case, the timeout
+should be discarded.  A custom hook can check this case by calling ``is_debugging()``
+function:
+
+.. code:: python
+
+   import pytest
+   import pytest_timeout
+
+
+   def on_timeout():
+       if pytest_timeout.is_debugging():
+           return
+       pytest.fail("+++ Timeout +++")
 
 
 Changelog
 =========
+
+2.1.0
+-----
+
+- Get terminal width from shutil instead of deprecated py, thanks
+  Andrew Svetlov.
+- Add an API for extending ``pytest-timeout`` functionality
+  with third-party plugins, thanks Andrew Svetlov.
+
+2.0.2
+-----
+
+- Fix debugger detection on OSX, thanks Alexander Pacha.
+
+2.0.1
+-----
+
+- Fix Python 2 removal, thanks Nicusor Picatureanu.
+
+2.0.0
+-----
+
+- Increase pytest requirement to >=5.0.0.  Thanks Dominic Davis-Foster.
+- Use thread timeout method when plugin is not called from main
+  thread to avoid crash.
+- Fix pycharm debugger detection so timeouts are not triggered during
+  debugger usage.
+- Dropped support for Python 2, minimum pytest version supported is 5.0.0.
 
 1.4.2
 -----
@@ -252,7 +387,7 @@ Changelog
 1.3.2
 -----
 
-- This changelog was ommitted for the 1.3.2 release and was added
+- This changelog was omitted for the 1.3.2 release and was added
   afterwards.  Apologies for the confusion.
 - Fix pytest 3.7.3 compatibility.  The capture API had changed
   slightly and this needed fixing.  Thanks Bruno Oliveira for the
