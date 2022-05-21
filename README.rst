@@ -244,11 +244,11 @@ Extending pytest-timeout with plugins
 =====================================
 
 ``pytest-timeout`` provides two hooks that can be used for extending the tool.  These
-hooks are used for for setting the timeout timer and cancelling it it the timeout is not
+hooks are used for setting the timeout timer and cancelling it if the timeout is not
 reached.
 
 For example, ``pytest-asyncio`` can provide asyncio-specific code that generates better
-traceback and points on timed out ``await`` instead of the running loop ieration.
+traceback and points on timed out ``await`` instead of the running loop iteration.
 
 See `pytest hooks documentation
 <https://docs.pytest.org/en/latest/how-to/writing_hook_functions.html>`_ for more info
