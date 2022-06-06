@@ -70,7 +70,7 @@ def pytest_addoption(parser):
     )
     parser.addini("timeout", TIMEOUT_DESC)
     parser.addini("timeout_method", METHOD_DESC)
-    parser.addini("timeout_func_only", FUNC_ONLY_DESC, type="bool")
+    parser.addini("timeout_func_only", FUNC_ONLY_DESC, type="bool", default=False)
 
 
 class TimeoutHooks:
@@ -299,12 +299,7 @@ def get_env_settings(config):
         method = DEFAULT_METHOD
 
     func_only = config.getini("timeout_func_only")
-    if func_only == []:
-        # No value set
-        func_only = None
-    if func_only is not None:
-        func_only = _validate_func_only(func_only, "config file")
-    return Settings(timeout, method, func_only or False)
+    return Settings(timeout, method, func_only)
 
 
 def _get_item_settings(item, marker=None):
@@ -323,8 +318,6 @@ def _get_item_settings(item, marker=None):
         method = item.config._env_timeout_method
     if func_only is None:
         func_only = item.config._env_timeout_func_only
-    if func_only is None:
-        func_only = False
     return Settings(timeout, method, func_only)
 
 
