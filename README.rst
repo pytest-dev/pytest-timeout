@@ -19,13 +19,15 @@ pytest-timeout
 .. |pre-commit| image:: https://results.pre-commit.ci/badge/github/pytest-dev/pytest-timeout/master.svg
    :target: https://results.pre-commit.ci/latest/github/pytest-dev/pytest-timeout/master
 
-**This is not the timeout you are looking for!**
 
 .. warning::
 
    Please read this README carefully and only use this plugin if you
-   understand the consequences.  Remember your test suite needs to be
-   **fast**, timeouts are a last resort not an expected failure mode.
+   understand the consequences.  This plugin is designed to catch
+   excessively long test durations like deadlocked or hanging tests,
+   it is not designed for precise timings or performance regressions.
+   Remember your test suite should aim to be **fast**, with timeouts
+   being a last resort, not an expected failure mode.
 
 This plugin will time each test and terminate it when it takes too
 long.  Termination may or may not be graceful, please see below, but
