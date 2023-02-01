@@ -520,7 +520,7 @@ def test_disable_debugger_detection_flag(
             debugging_module=debugging_module, debugging_set_trace=debugging_set_trace
         )
     )
-    child = testdir.spawn_pytest(f"{p1} --disable-debugger-detection")
+    child = testdir.spawn_pytest(f"{p1} --timeout-disable-debugger-detection")
     child.expect("test_foo")
     time.sleep(1.2)
     result = child.read().decode().lower()

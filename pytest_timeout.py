@@ -75,7 +75,7 @@ def pytest_addoption(parser):
         help=METHOD_DESC,
     )
     group.addoption(
-        "--disable-debugger-detection",
+        "--timeout-disable-debugger-detection",
         dest="timeout_disable_debugger_detection",
         action="store_true",
         help=DISABLE_DEBUGGER_DETECTION_DESC,
