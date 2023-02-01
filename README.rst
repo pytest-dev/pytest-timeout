@@ -241,6 +241,10 @@ check to see if the module it belongs to is present in a set of known
 debugging frameworks modules OR if pytest itself drops you into a pdb
 session using ``--pdb`` or similar.
 
+This functionality can be disabled with the ``--disable-debugger-detection`` flag
+or the corresponding ``timeout_disable_debugger_detection`` ini setting / environment
+variable.
+
 
 Extending pytest-timeout with plugins
 =====================================
