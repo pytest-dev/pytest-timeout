@@ -332,6 +332,12 @@ function:
 Changelog
 =========
 
+2.2.0
+-----
+
+- Add ``--timeout-disable-debugger-detection`` flag, thanks
+  Michael Peters
+
 2.1.0
 -----
 
