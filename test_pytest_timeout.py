@@ -530,50 +530,6 @@ def test_disable_debugger_detection_flag(
     assert "fail" in result
 
 
-@pytest.mark.parametrize(
-    ["debugging_module", "debugging_set_trace"],
-    [
-        ("pdb", "set_trace()"),
-        pytest.param(
-            "ipdb",
-            "set_trace()",
-            marks=pytest.mark.xfail(
-                reason="waiting on https://github.com/pytest-dev/pytest/pull/7207"
-                " to allow proper testing"
-            ),
-        ),
-        pytest.param(
-            "pydevd",
-            "settrace(port=4678)",
-            marks=pytest.mark.xfail(reason="in need of way to setup pydevd server"),
-        ),
-    ],
-)
-@have_spawn
-def test_disable_debugger_detection_marker(
-    testdir, debugging_module, debugging_set_trace
-):
-    p1 = testdir.makepyfile(
-        """
-        import pytest, {debugging_module}
-
-        @pytest.mark.timeout(1, disable_debugger_detection=True)
-        def test_foo():
-            {debugging_module}.{debugging_set_trace}
-    """.format(
-            debugging_module=debugging_module, debugging_set_trace=debugging_set_trace
-        )
-    )
-    child = testdir.spawn_pytest(str(p1))
-    child.expect("test_foo")
-    time.sleep(1.2)
-    result = child.read().decode().lower()
-    if child.isalive():
-        child.terminate(force=True)
-    assert "timeout >1.0s" in result
-    assert "fail" in result
-
-
 def test_is_debugging(monkeypatch):
     import pytest_timeout
 

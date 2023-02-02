@@ -42,7 +42,7 @@ used in the test.
 """.strip()
 DISABLE_DEBUGGER_DETECTION_DESC = """
 When specified, disables debugger detection. breakpoint(), pdb.set_trace(), etc.
-will be interrupted.
+will be interrupted by the timeout.
 """.strip()
 
 # bdb covers pdb, ipdb, and possibly others
@@ -364,7 +364,7 @@ def _parse_marker(marker):
     """
     if not marker.args and not marker.kwargs:
         raise TypeError("Timeout marker must have at least one argument")
-    timeout = method = func_only = disable_debugger_detection = NOTSET = object()
+    timeout = method = func_only = NOTSET = object()
     for kw, val in marker.kwargs.items():
         if kw == "timeout":
             timeout = val
@@ -372,8 +372,6 @@ def _parse_marker(marker):
             method = val
         elif kw == "func_only":
             func_only = val
-        elif kw == "disable_debugger_detection":
-            disable_debugger_detection = val
         else:
             raise TypeError("Invalid keyword argument for timeout marker: %s" % kw)
     if len(marker.args) >= 1 and timeout is not NOTSET:
@@ -384,13 +382,7 @@ def _parse_marker(marker):
         raise TypeError("Multiple values for method argument of timeout marker")
     elif len(marker.args) >= 2:
         method = marker.args[1]
-    if len(marker.args) >= 3 and disable_debugger_detection is not NOTSET:
-        raise TypeError(
-            "Multiple values for disable_debugger_detection argument of timeout marker"
-        )
-    elif len(marker.args) >= 3:
-        disable_debugger_detection = marker.args[2]
-    if len(marker.args) > 3:
+    if len(marker.args) > 2:
         raise TypeError("Too many arguments for timeout marker")
     if timeout is NOTSET:
         timeout = None
@@ -398,9 +390,7 @@ def _parse_marker(marker):
         method = None
     if func_only is NOTSET:
         func_only = None
-    if disable_debugger_detection is NOTSET:
-        disable_debugger_detection = None
-    return Settings(timeout, method, func_only, disable_debugger_detection)
+    return Settings(timeout, method, func_only, None)
 
 
 def _validate_timeout(timeout, where):
