@@ -8,8 +8,6 @@ jobs:
       fail-fast: false
       matrix:
         python:
-          - v: "3.6"
-            tox_env: "py36"
           - v: "3.7"
             tox_env: "py37"
           - v: "3.7"
@@ -29,9 +27,9 @@ jobs:
         run: |
           git config --global core.autocrlf false
           git config --global core.eol lf
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python.v }}
       - name: Install tox
