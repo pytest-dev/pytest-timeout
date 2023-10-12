@@ -135,7 +135,8 @@ def pytest_configure(config):
         "evaluating any fixtures used in the test. The "
         "*disable_debugger_detection* keyword, when set to True, disables "
         "debugger detection, allowing breakpoint(), pdb.set_trace(), etc. "
-        "to be interrupted",
+        "to be interrupted. The *skip* keyword, when set to True, the timeout "
+        "trigger pytest.skip() instead of pytest.fail().",
     )
 
     settings = get_env_settings(config)
@@ -143,6 +144,7 @@ def pytest_configure(config):
     config._env_timeout_method = settings.method
     config._env_timeout_func_only = settings.func_only
     config._env_timeout_disable_debugger_detection = settings.disable_debugger_detection
+    config._env_timeout_trigger_skip = settings.skip
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -436,6 +438,7 @@ def timeout_sigalrm(item, settings):
     current to stderr and then raise an AssertionError, thus
     terminating the test.
     """
+    skip = settings.skip
     if not settings.disable_debugger_detection and is_debugging():
         return
     __tracebackhide__ = True
@@ -445,7 +448,10 @@ def timeout_sigalrm(item, settings):
     dump_stacks()
     if nthreads > 1:
         write_title("Timeout", sep="+")
-    pytest.fail("Timeout >%ss" % settings.timeout)
+    if skip:
+        pytest.skip("Timeout >%ss" % settings.timeout)
+    else:
+        pytest.fail("Timeout >%ss" % settings.timeout)
 
 
 def timeout_timer(item, settings):
