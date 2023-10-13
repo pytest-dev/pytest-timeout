@@ -154,7 +154,7 @@ def pytest_configure(config):
     config._env_timeout_method = settings.method
     config._env_timeout_func_only = settings.func_only
     config._env_timeout_disable_debugger_detection = settings.disable_debugger_detection
-    config._env_timeout_trigger_skip = settings.skip
+    config._env_timeout_skip = settings.skip
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -202,7 +202,7 @@ def pytest_report_header(config):
                 config._env_timeout,
                 config._env_timeout_method,
                 config._env_timeout_func_only,
-                config.skip,
+                config._env_timeout_skip,
             )
         ]
 
@@ -373,7 +373,7 @@ def _get_item_settings(item, marker=None):
     if disable_debugger_detection is None:
         disable_debugger_detection = item.config._env_timeout_disable_debugger_detection
     if skip is None:
-        func_only = item.config.skip
+        func_only = item.config._env_timeout_skip
     return Settings(timeout, method, func_only, disable_debugger_detection, skip)
 
 
