@@ -44,12 +44,15 @@ DISABLE_DEBUGGER_DETECTION_DESC = """
 When specified, disables debugger detection. breakpoint(), pdb.set_trace(), etc.
 will be interrupted by the timeout.
 """.strip()
+SKIP_DESC = """
+When set to True, timeout trigger pytest.skip() instead of pytest.fail().
+""".strip()
 
 # bdb covers pdb, ipdb, and possibly others
 # pydevd covers PyCharm, VSCode, and possibly others
 KNOWN_DEBUGGING_MODULES = {"pydevd", "bdb", "pydevd_frame_evaluator"}
 Settings = namedtuple(
-    "Settings", ["timeout", "method", "func_only", "disable_debugger_detection"]
+    "Settings", ["timeout", "method", "func_only", "disable_debugger_detection", "skip"]
 )
 
 
@@ -80,15 +83,22 @@ def pytest_addoption(parser):
         action="store_true",
         help=DISABLE_DEBUGGER_DETECTION_DESC,
     )
+    group.addoption(
+        "--timeout-skip",
+        dest="timeout_skip",
+        action="store_true",
+        help=SKIP_DESC,
+    )
     parser.addini("timeout", TIMEOUT_DESC)
     parser.addini("timeout_method", METHOD_DESC)
     parser.addini("timeout_func_only", FUNC_ONLY_DESC, type="bool", default=False)
     parser.addini(
         "timeout_disable_debugger_detection",
-        DISABLE_DEBUGGER_DETECTION_DESC,
+        SKIP_DESC,
         type="bool",
         default=False,
     )
+    parser.addini("skip", SKIP_DESC, type="bool", default=False)
 
 
 class TimeoutHooks:
@@ -192,6 +202,7 @@ def pytest_report_header(config):
                 config._env_timeout,
                 config._env_timeout_method,
                 config._env_timeout_func_only,
+                config.skip,
             )
         ]
 
@@ -330,8 +341,13 @@ def get_env_settings(config):
             disable_debugger_detection = _validate_disable_debugger_detection(
                 ini, "config file"
             )
+    skip = config.getvalue("skip")
+    if skip is None:
+        ini = config.getini("skip")
+        if ini:
+            method = _validate_skip(ini, "config file")
 
-    return Settings(timeout, method, func_only, disable_debugger_detection)
+    return Settings(timeout, method, func_only, disable_debugger_detection, skip)
 
 
 def _get_item_settings(item, marker=None):
@@ -347,6 +363,7 @@ def _get_item_settings(item, marker=None):
         disable_debugger_detection = _validate_disable_debugger_detection(
             settings.disable_debugger_detection, "marker"
         )
+        skip = _validate_func_only(settings.skip, "marker")
     if timeout is None:
         timeout = item.config._env_timeout
     if method is None:
@@ -355,7 +372,9 @@ def _get_item_settings(item, marker=None):
         func_only = item.config._env_timeout_func_only
     if disable_debugger_detection is None:
         disable_debugger_detection = item.config._env_timeout_disable_debugger_detection
-    return Settings(timeout, method, func_only, disable_debugger_detection)
+    if skip is None:
+        func_only = item.config.skip
+    return Settings(timeout, method, func_only, disable_debugger_detection, skip)
 
 
 def _parse_marker(marker):
@@ -373,6 +392,8 @@ def _parse_marker(marker):
         elif kw == "method":
             method = val
         elif kw == "func_only":
+            func_only = val
+        elif kw == "skip":
             func_only = val
         else:
             raise TypeError("Invalid keyword argument for timeout marker: %s" % kw)
@@ -392,7 +413,9 @@ def _parse_marker(marker):
         method = None
     if func_only is NOTSET:
         func_only = None
-    return Settings(timeout, method, func_only, None)
+    if skip is NOTSET:
+        skip = None
+    return Settings(timeout, method, func_only, None, skip)
 
 
 def _validate_timeout(timeout, where):
@@ -429,6 +452,14 @@ def _validate_disable_debugger_detection(disable_debugger_detection, where):
             % (disable_debugger_detection, where)
         )
     return disable_debugger_detection
+
+
+def _validate_func_only(skip, where):
+    if skip is None:
+        return None
+    if not isinstance(skip, bool):
+        raise ValueError("Invalid skip value %s from %s" % (skip, where))
+    return skip
 
 
 def timeout_sigalrm(item, settings):
