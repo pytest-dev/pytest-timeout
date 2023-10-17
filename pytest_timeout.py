@@ -236,8 +236,11 @@ def is_debugging(trace_func=None):
         return True
     if trace_func is None:
         trace_func = sys.gettrace()
-    if trace_func and inspect.getmodule(trace_func):
-        parts = inspect.getmodule(trace_func).__name__.split(".")
+    trace_module = None
+    if trace_func:
+        trace_module = inspect.getmodule(trace_func) or inspect.getmodule(trace_func.__class__)
+    if trace_module:
+        parts = trace_module.__name__.split(".")
         for name in KNOWN_DEBUGGING_MODULES:
             if any(part.startswith(name) for part in parts):
                 return True
