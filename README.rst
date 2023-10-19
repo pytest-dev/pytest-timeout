@@ -332,6 +332,12 @@ function:
 Changelog
 =========
 
+Unreleased
+----------
+
+- Fix debugger detection for recent VSCode, this compiles pydevd using
+  cython which is now correctly detected.  Thanks Adrian Gielniewski.
+
 2.2.0
 -----
 
