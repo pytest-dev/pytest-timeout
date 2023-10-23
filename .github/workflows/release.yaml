@@ -7,7 +7,7 @@ jobs:
   release:
     name: Upload release to PyPI
     runs-on: ubuntu-latest
-    if: github.repository == 'pytest-dev/pytest-timeout'
+    if: github.repository_owner == 'pytest-dev'
 
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
