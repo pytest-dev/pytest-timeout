@@ -229,7 +229,7 @@ documented in ``pytest --help``.
 
 A decorator will override ``timeout_func_only = true`` in the pytest ini
 file to the default value. If you need to keep this option for a
-decorated test, you must specify the option again explicitly:
+decorated test, you must specify the option explicitly again:
 
 .. code:: python
 
