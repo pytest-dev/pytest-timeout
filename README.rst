@@ -227,6 +227,17 @@ this really isn't an option a ``timeout_func_only`` boolean setting
 exists which can be set in the pytest ini configuration file, as
 documented in ``pytest --help``.
 
+For the decorated function, a decorator will override
+``timeout_func_only = true`` in the pytest ini file to the default
+value. If you need to keep this option for a decorated test, you
+must specify the option explicitly again:
+
+.. code:: python
+
+   @pytest.mark.timeout(60, func_only=True)
+   def test_foo():
+       pass
+
 
 Debugger Detection
 ==================
