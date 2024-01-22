@@ -348,6 +348,10 @@ Unreleased
 
 - Fix debugger detection for recent VSCode, this compiles pydevd using
   cython which is now correctly detected.  Thanks Adrian Gielniewski.
+- Switched to using Pytest's ``TerminalReporter`` instead of writing
+  directly to ``sys.{stdout,stderr}``.
+  This change also switches all output from ``sys.stderr`` to ``sys.stdout``.
+  Thanks Pedro Algarvio.
 
 2.2.0
 -----
