@@ -352,6 +352,7 @@ Unreleased
   directly to ``sys.{stdout,stderr}``.
   This change also switches all output from ``sys.stderr`` to ``sys.stdout``.
   Thanks Pedro Algarvio.
+- Pytest 7.0.0 is now the minimum supported version.  Thanks Pedro Algarvio.
 
 2.2.0
 -----
