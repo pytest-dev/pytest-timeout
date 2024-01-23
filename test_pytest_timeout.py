@@ -603,3 +603,22 @@ def test_plugin_interface(pytester):
             "pytest_timeout_cancel_timer",
         ]
     )
+
+def test_suite_timeout(pytester):
+    pytester.makepyfile(
+        """
+     import time, pytest
+
+     @pytest.mark.parametrize('i', range(10))
+     def test_foo(i):
+         time.sleep(0.1)
+    """
+    )
+    # each parametrization runs for 0.1 sec
+    # or about 0.00166 seconds each
+    # so 0.005 min should be about 3 iterations
+    result = pytester.runpytest_subprocess("--suite-timeout", "0.005")
+    result.stdout.fnmatch_lines([
+        "*= 3 passed * =*",
+        "*!! * suite-timeout: 0.005 minutes exceeded !!!*"
+        ])

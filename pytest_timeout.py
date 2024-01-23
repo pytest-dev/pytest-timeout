@@ -10,6 +10,7 @@ import inspect
 import os
 import signal
 import sys
+import time
 import threading
 import traceback
 from collections import namedtuple
@@ -42,6 +43,11 @@ used in the test.
 DISABLE_DEBUGGER_DETECTION_DESC = """
 When specified, disables debugger detection. breakpoint(), pdb.set_trace(), etc.
 will be interrupted by the timeout.
+""".strip()
+SUITE_TIMEOUT_DESC = """
+Timeout in minutes for entire suite.  Default is None which
+means no timeout. Timeout is checked between tests, and will not interrupt a test 
+in progress. Can be specified as a float for partial minutes.
 """.strip()
 
 # bdb covers pdb, ipdb, and possibly others
@@ -78,6 +84,15 @@ def pytest_addoption(parser):
         dest="timeout_disable_debugger_detection",
         action="store_true",
         help=DISABLE_DEBUGGER_DETECTION_DESC,
+    )
+    group.addoption(
+        "--suite-timeout",
+        action="store",
+        dest="suite_timeout",
+        default=None,
+        type=float,
+        metavar="minutes",
+        help=SUITE_TIMEOUT_DESC,
     )
     parser.addini("timeout", TIMEOUT_DESC)
     parser.addini("timeout_method", METHOD_DESC)
@@ -119,9 +134,13 @@ def pytest_addhooks(pluginmanager):
     pluginmanager.add_hookspecs(TimeoutHooks)
 
 
+_suite_expire_time = 0
+
+
 @pytest.hookimpl
 def pytest_configure(config):
     """Register the marker so it shows up in --markers output."""
+    global _suite_expire_time, _suite_timeout_minutes
     config.addinivalue_line(
         "markers",
         "timeout(timeout, method=None, func_only=False, "
@@ -142,6 +161,11 @@ def pytest_configure(config):
     config._env_timeout_method = settings.method
     config._env_timeout_func_only = settings.func_only
     config._env_timeout_disable_debugger_detection = settings.disable_debugger_detection
+
+    _suite_timeout_minutes = config.getoption("--suite-timeout")
+    if _suite_timeout_minutes:
+        _suite_expire_time = time.time() + (_suite_timeout_minutes * 60)
+
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -507,3 +531,9 @@ def dump_stacks(terminal):
             thread_name = "<unknown>"
         terminal.sep("~", title="Stack of %s (%s)" % (thread_name, thread_ident))
         terminal.write("".join(traceback.format_stack(frame)))
+
+
+def pytest_runtest_logfinish(nodeid, location):
+    if _suite_expire_time and _suite_expire_time < time.time():
+        pytest.exit(f"suite-timeout: {_suite_timeout_minutes} minutes exceeded",
+                    returncode=0)
