@@ -21,6 +21,8 @@ jobs:
             tox_env: "py310"
           - v: "3.11"
             tox_env: "py311"
+          - v: "3.12"
+            tox_env: "py312"
         os: [ubuntu-latest, windows-latest]
     steps:
       - name: Set Git to use LF
