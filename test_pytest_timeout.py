@@ -611,14 +611,9 @@ def test_suite_timeout(pytester):
 
      @pytest.mark.parametrize('i', range(10))
      def test_foo(i):
-         time.sleep(0.1)
+         time.sleep(1)
     """
     )
-    # each parametrization runs for 0.1 sec
-    # or about 0.00166 seconds each
-    # so 0.005 min should be about 3 iterations
-    result = pytester.runpytest_subprocess("--suite-timeout", "0.005")
-    result.stdout.fnmatch_lines([
-        "*= 3 passed * =*",
-        "*!! * suite-timeout: 0.005 minutes exceeded !!!*"
-        ])
+    result = pytester.runpytest_subprocess("--suite-timeout", "0.5")
+    result.stdout.fnmatch_lines(["*!! suite-timeout: 0.5 sec exceeded !!!*"])
+    result.assert_outcomes(passed=1)

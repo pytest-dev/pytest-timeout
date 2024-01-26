@@ -19,6 +19,7 @@ import pytest
 
 
 __all__ = ("is_debugging", "Settings")
+suite_timeout_key = pytest.StashKey[float]()
 
 
 HAVE_SIGALRM = hasattr(signal, "SIGALRM")
@@ -45,9 +46,9 @@ When specified, disables debugger detection. breakpoint(), pdb.set_trace(), etc.
 will be interrupted by the timeout.
 """.strip()
 SUITE_TIMEOUT_DESC = """
-Timeout in minutes for entire suite.  Default is None which
+Timeout in seconds for entire suite.  Default is None which
 means no timeout. Timeout is checked between tests, and will not interrupt a test 
-in progress. Can be specified as a float for partial minutes.
+in progress. 
 """.strip()
 
 # bdb covers pdb, ipdb, and possibly others
@@ -91,7 +92,7 @@ def pytest_addoption(parser):
         dest="suite_timeout",
         default=None,
         type=float,
-        metavar="minutes",
+        metavar="SECONDS",
         help=SUITE_TIMEOUT_DESC,
     )
     parser.addini("timeout", TIMEOUT_DESC)
@@ -162,10 +163,12 @@ def pytest_configure(config):
     config._env_timeout_func_only = settings.func_only
     config._env_timeout_disable_debugger_detection = settings.disable_debugger_detection
 
-    _suite_timeout_minutes = config.getoption("--suite-timeout")
-    if _suite_timeout_minutes:
-        _suite_expire_time = time.time() + (_suite_timeout_minutes * 60)
-
+    timeout = config.getoption("--suite-timeout")
+    if timeout is not None:
+        expire_time = time.time() + timeout
+    else:
+        expire_time = 0
+    config.stash[suite_timeout_key] = expire_time
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -533,7 +536,10 @@ def dump_stacks(terminal):
         terminal.write("".join(traceback.format_stack(frame)))
 
 
-def pytest_runtest_logfinish(nodeid, location):
-    if _suite_expire_time and _suite_expire_time < time.time():
-        pytest.exit(f"suite-timeout: {_suite_timeout_minutes} minutes exceeded",
-                    returncode=0)
+def pytest_runtest_makereport(item, call):
+    session = item.session
+    config = session.config
+    expire_time = config.stash[suite_timeout_key]
+    if expire_time and (expire_time < time.time()):
+        timeout = config.getoption("--suite-timeout")
+        session.shouldfail = f"suite-timeout: {timeout} sec exceeded"
