@@ -10,8 +10,8 @@ import inspect
 import os
 import signal
 import sys
-import time
 import threading
+import time
 import traceback
 from collections import namedtuple
 
@@ -47,8 +47,8 @@ will be interrupted by the timeout.
 """.strip()
 SUITE_TIMEOUT_DESC = """
 Timeout in seconds for entire suite.  Default is None which
-means no timeout. Timeout is checked between tests, and will not interrupt a test 
-in progress. 
+means no timeout. Timeout is checked between tests, and will not interrupt a test
+in progress.
 """.strip()
 
 # bdb covers pdb, ipdb, and possibly others
@@ -205,15 +205,23 @@ def pytest_runtest_call(item):
 @pytest.hookimpl(tryfirst=True)
 def pytest_report_header(config):
     """Add timeout config to pytest header."""
+    timeout_header = []
+
     if config._env_timeout:
-        return [
+        timeout_header.append(
             "timeout: %ss\ntimeout method: %s\ntimeout func_only: %s"
             % (
                 config._env_timeout,
                 config._env_timeout_method,
                 config._env_timeout_func_only,
             )
-        ]
+        )
+
+    suite_timeout = config.getoption("--suite-timeout")
+    if suite_timeout:
+        timeout_header.append("suite timeout: %ss" % suite_timeout)
+    if timeout_header:
+        return timeout_header
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -534,7 +542,7 @@ def dump_stacks(terminal):
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_runtest_makereport(item, call):
-    # only need to check timeout once, at the end, after teardown 
+    # only need to check timeout once, at the end, after teardown
     if call.when == "teardown":
         session = item.session
         config = session.config
