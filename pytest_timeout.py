@@ -19,7 +19,7 @@ import pytest
 
 
 __all__ = ("is_debugging", "Settings")
-suite_timeout_key = pytest.StashKey[float]()
+SUITE_TIMEOUT_KEY = pytest.StashKey[float]()
 
 
 HAVE_SIGALRM = hasattr(signal, "SIGALRM")
@@ -135,13 +135,9 @@ def pytest_addhooks(pluginmanager):
     pluginmanager.add_hookspecs(TimeoutHooks)
 
 
-_suite_expire_time = 0
-
-
 @pytest.hookimpl
 def pytest_configure(config):
     """Register the marker so it shows up in --markers output."""
-    global _suite_expire_time, _suite_timeout_minutes
     config.addinivalue_line(
         "markers",
         "timeout(timeout, method=None, func_only=False, "
@@ -168,7 +164,7 @@ def pytest_configure(config):
         expire_time = time.time() + timeout
     else:
         expire_time = 0
-    config.stash[suite_timeout_key] = expire_time
+    config.stash[SUITE_TIMEOUT_KEY] = expire_time
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -539,7 +535,7 @@ def dump_stacks(terminal):
 def pytest_runtest_makereport(item, call):
     session = item.session
     config = session.config
-    expire_time = config.stash[suite_timeout_key]
+    expire_time = config.stash[SUITE_TIMEOUT_KEY]
     if expire_time and (expire_time < time.time()):
         timeout = config.getoption("--suite-timeout")
         session.shouldfail = f"suite-timeout: {timeout} sec exceeded"
