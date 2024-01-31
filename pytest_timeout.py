@@ -533,9 +533,11 @@ def dump_stacks(terminal):
 
 
 def pytest_runtest_makereport(item, call):
-    session = item.session
-    config = session.config
-    expire_time = config.stash[SUITE_TIMEOUT_KEY]
-    if expire_time and (expire_time < time.time()):
-        timeout = config.getoption("--suite-timeout")
-        session.shouldfail = f"suite-timeout: {timeout} sec exceeded"
+    # only need to check timeout once, at the end, after teardown 
+    if call.when == "teardown":
+        session = item.session
+        config = session.config
+        expire_time = config.stash[SUITE_TIMEOUT_KEY]
+        if expire_time and (expire_time < time.time()):
+            timeout = config.getoption("--suite-timeout")
+            session.shouldfail = f"suite-timeout: {timeout} sec exceeded"
