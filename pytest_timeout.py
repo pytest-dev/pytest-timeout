@@ -532,6 +532,7 @@ def dump_stacks(terminal):
         terminal.write("".join(traceback.format_stack(frame)))
 
 
+@pytest.hookimpl(tryfirst=True)
 def pytest_runtest_makereport(item, call):
     # only need to check timeout once, at the end, after teardown 
     if call.when == "teardown":
