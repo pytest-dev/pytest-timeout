@@ -55,6 +55,7 @@ docs/_build/
 
 # Virtual Envs
 .env*
+venv
 
 # IDE
 .idea

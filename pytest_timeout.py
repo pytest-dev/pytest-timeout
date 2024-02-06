@@ -19,7 +19,7 @@ import pytest
 
 
 __all__ = ("is_debugging", "Settings")
-SUITE_TIMEOUT_KEY = pytest.StashKey[float]()
+SESSION_TIMEOUT_KEY = pytest.StashKey[float]()
 
 
 HAVE_SIGALRM = hasattr(signal, "SIGALRM")
@@ -45,8 +45,8 @@ DISABLE_DEBUGGER_DETECTION_DESC = """
 When specified, disables debugger detection. breakpoint(), pdb.set_trace(), etc.
 will be interrupted by the timeout.
 """.strip()
-SUITE_TIMEOUT_DESC = """
-Timeout in seconds for entire suite.  Default is None which
+SESSION_TIMEOUT_DESC = """
+Timeout in seconds for entire session.  Default is None which
 means no timeout. Timeout is checked between tests, and will not interrupt a test
 in progress.
 """.strip()
@@ -87,13 +87,13 @@ def pytest_addoption(parser):
         help=DISABLE_DEBUGGER_DETECTION_DESC,
     )
     group.addoption(
-        "--suite-timeout",
+        "--session-timeout",
         action="store",
-        dest="suite_timeout",
+        dest="session_timeout",
         default=None,
         type=float,
         metavar="SECONDS",
-        help=SUITE_TIMEOUT_DESC,
+        help=SESSION_TIMEOUT_DESC,
     )
     parser.addini("timeout", TIMEOUT_DESC)
     parser.addini("timeout_method", METHOD_DESC)
@@ -159,12 +159,12 @@ def pytest_configure(config):
     config._env_timeout_func_only = settings.func_only
     config._env_timeout_disable_debugger_detection = settings.disable_debugger_detection
 
-    timeout = config.getoption("--suite-timeout")
+    timeout = config.getoption("--session-timeout")
     if timeout is not None:
         expire_time = time.time() + timeout
     else:
         expire_time = 0
-    config.stash[SUITE_TIMEOUT_KEY] = expire_time
+    config.stash[SESSION_TIMEOUT_KEY] = expire_time
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -184,11 +184,11 @@ def pytest_runtest_protocol(item):
     if is_timeout and settings.func_only is False:
         hooks.pytest_timeout_cancel_timer(item=item)
 
-    #  check suite timeout
-    expire_time = item.session.config.stash[SUITE_TIMEOUT_KEY]
+    #  check session timeout
+    expire_time = item.session.config.stash[SESSION_TIMEOUT_KEY]
     if expire_time and (expire_time < time.time()):
-        timeout = item.session.config.getoption("--suite-timeout")
-        item.session.shouldfail = f"suite-timeout: {timeout} sec exceeded"
+        timeout = item.session.config.getoption("--session-timeout")
+        item.session.shouldfail = f"session-timeout: {timeout} sec exceeded"
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -223,9 +223,9 @@ def pytest_report_header(config):
             )
         )
 
-    suite_timeout = config.getoption("--suite-timeout")
-    if suite_timeout:
-        timeout_header.append("suite timeout: %ss" % suite_timeout)
+    session_timeout = config.getoption("--session-timeout")
+    if session_timeout:
+        timeout_header.append("session timeout: %ss" % session_timeout)
     if timeout_header:
         return timeout_header
 
