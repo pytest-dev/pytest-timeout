@@ -184,6 +184,12 @@ def pytest_runtest_protocol(item):
     if is_timeout and settings.func_only is False:
         hooks.pytest_timeout_cancel_timer(item=item)
 
+    #  check suite timeout
+    expire_time = item.session.config.stash[SUITE_TIMEOUT_KEY]
+    if expire_time and (expire_time < time.time()):
+        timeout = item.session.config.getoption("--suite-timeout")
+        item.session.shouldfail = f"suite-timeout: {timeout} sec exceeded"
+
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_call(item):
@@ -538,15 +544,3 @@ def dump_stacks(terminal):
             thread_name = "<unknown>"
         terminal.sep("~", title="Stack of %s (%s)" % (thread_name, thread_ident))
         terminal.write("".join(traceback.format_stack(frame)))
-
-
-@pytest.hookimpl(tryfirst=True)
-def pytest_runtest_makereport(item, call):
-    # only need to check timeout once, at the end, after teardown
-    if call.when == "teardown":
-        session = item.session
-        config = session.config
-        expire_time = config.stash[SUITE_TIMEOUT_KEY]
-        if expire_time and (expire_time < time.time()):
-            timeout = config.getoption("--suite-timeout")
-            session.shouldfail = f"suite-timeout: {timeout} sec exceeded"
