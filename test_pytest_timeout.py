@@ -604,7 +604,8 @@ def test_plugin_interface(pytester):
         ]
     )
 
-def test_suite_timeout(pytester):
+
+def test_session_timeout(pytester):
     pytester.makepyfile(
         """
      import time, pytest
@@ -614,6 +615,6 @@ def test_suite_timeout(pytester):
          time.sleep(1)
     """
     )
-    result = pytester.runpytest_subprocess("--suite-timeout", "0.5")
-    result.stdout.fnmatch_lines(["*!! suite-timeout: 0.5 sec exceeded !!!*"])
+    result = pytester.runpytest_subprocess("--session-timeout", "0.5")
+    result.stdout.fnmatch_lines(["*!! session-timeout: 0.5 sec exceeded !!!*"])
     result.assert_outcomes(passed=1)
