@@ -22,9 +22,14 @@ def test_header(pytester):
         def test_x(): pass
     """
     )
-    result = pytester.runpytest_subprocess("--timeout=1")
+    result = pytester.runpytest_subprocess("--timeout=1", "--session-timeout=2")
     result.stdout.fnmatch_lines(
-        ["timeout: 1.0s", "timeout method:*", "timeout func_only:*"]
+        [
+            "timeout: 1.0s",
+            "timeout method:*",
+            "timeout func_only:*",
+            "session timeout: 2.0s",
+        ]
     )
 
 
@@ -606,15 +611,29 @@ def test_plugin_interface(pytester):
 
 
 def test_session_timeout(pytester):
+    # 2 tests, each with 0.5 sec timeouts
+    # each using a fixture with 0.5 sec setup and 0.5 sec teardown
+    # So about 1.5 seconds per test, ~3 sec total,
+    # Therefore:
+    # A timeout of 1.25 sec should happen during the teardown of the first test
+    # and the second test should NOT be run
     pytester.makepyfile(
         """
-     import time, pytest
+        import time, pytest
 
-     @pytest.mark.parametrize('i', range(10))
-     def test_foo(i):
-         time.sleep(1)
-    """
+        @pytest.fixture()
+        def slow_setup_and_teardown():
+            time.sleep(0.5)
+            yield
+            time.sleep(0.5)
+
+        def test_one(slow_setup_and_teardown):
+            time.sleep(0.5)
+
+        def test_two(slow_setup_and_teardown):
+            time.sleep(0.5)
+        """
     )
-    result = pytester.runpytest_subprocess("--session-timeout", "0.5")
-    result.stdout.fnmatch_lines(["*!! session-timeout: 0.5 sec exceeded !!!*"])
+    result = pytester.runpytest_subprocess("--session-timeout", "1.25")
+    result.stdout.fnmatch_lines(["*!! session-timeout: 1.25 sec exceeded !!!*"])
     result.assert_outcomes(passed=1)
