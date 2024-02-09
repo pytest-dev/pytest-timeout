@@ -20,6 +20,7 @@ import pytest
 
 __all__ = ("is_debugging", "Settings")
 SESSION_TIMEOUT_KEY = pytest.StashKey[float]()
+SESSION_EXPIRE_KEY = pytest.StashKey[float]()
 
 
 HAVE_SIGALRM = hasattr(signal, "SIGALRM")
@@ -104,6 +105,7 @@ def pytest_addoption(parser):
         type="bool",
         default=False,
     )
+    parser.addini("session_timeout", SESSION_TIMEOUT_DESC)
 
 
 class TimeoutHooks:
@@ -159,12 +161,18 @@ def pytest_configure(config):
     config._env_timeout_func_only = settings.func_only
     config._env_timeout_disable_debugger_detection = settings.disable_debugger_detection
 
-    timeout = config.getoption("--session-timeout")
+    timeout = config.getoption("session_timeout")
+    if timeout is None:
+        ini = config.getini("session_timeout")
+        if ini:
+            timeout = _validate_timeout(config.getini("session_timeout"), "config file")
     if timeout is not None:
         expire_time = time.time() + timeout
     else:
         expire_time = 0
-    config.stash[SESSION_TIMEOUT_KEY] = expire_time
+        timeout = 0
+    config.stash[SESSION_TIMEOUT_KEY] = timeout
+    config.stash[SESSION_EXPIRE_KEY] = expire_time
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -185,9 +193,9 @@ def pytest_runtest_protocol(item):
         hooks.pytest_timeout_cancel_timer(item=item)
 
     #  check session timeout
-    expire_time = item.session.config.stash[SESSION_TIMEOUT_KEY]
+    expire_time = item.session.config.stash[SESSION_EXPIRE_KEY]
     if expire_time and (expire_time < time.time()):
-        timeout = item.session.config.getoption("--session-timeout")
+        timeout = item.session.config.stash[SESSION_TIMEOUT_KEY]
         item.session.shouldfail = f"session-timeout: {timeout} sec exceeded"
 
 
@@ -223,7 +231,7 @@ def pytest_report_header(config):
             )
         )
 
-    session_timeout = config.getoption("--session-timeout")
+    session_timeout = config.getoption("session_timeout")
     if session_timeout:
         timeout_header.append("session timeout: %ss" % session_timeout)
     if timeout_header:

@@ -623,17 +623,40 @@ def test_session_timeout(pytester):
 
         @pytest.fixture()
         def slow_setup_and_teardown():
-            time.sleep(0.5)
+            time.sleep(1)
             yield
-            time.sleep(0.5)
+            time.sleep(1)
 
         def test_one(slow_setup_and_teardown):
-            time.sleep(0.5)
+            time.sleep(1)
 
         def test_two(slow_setup_and_teardown):
-            time.sleep(0.5)
+            time.sleep(1)
         """
     )
-    result = pytester.runpytest_subprocess("--session-timeout", "1.25")
-    result.stdout.fnmatch_lines(["*!! session-timeout: 1.25 sec exceeded !!!*"])
+    result = pytester.runpytest_subprocess("--session-timeout", "2")
+    result.stdout.fnmatch_lines(["*!! session-timeout: 2.0 sec exceeded !!!*"])
+    result.assert_outcomes(passed=1)
+
+
+def test_ini_session_timeout(pytester):
+    pytester.makepyfile(
+        """
+        import time
+
+        def test_one():
+            time.sleep(2)
+
+        def test_two():
+            time.sleep(2)
+        """
+    )
+    pytester.makeini(
+        """
+        [pytest]
+        session_timeout = 1
+        """
+    )
+    result = pytester.runpytest_subprocess()
+    result.stdout.fnmatch_lines(["*!! session-timeout: 1.0 sec exceeded !!!*"])
     result.assert_outcomes(passed=1)
