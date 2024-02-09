@@ -350,8 +350,7 @@ of 10 minutes (600 seconds)::
 
    pytest --session-timeout=600
 
-You can also set the session timeout the `pytest configuration file`__
-   using the ``session_timeout`` option:
+You can also set the session timeout the `pytest configuration file`__ using the ``session_timeout`` option:
 
    .. code:: ini
 
