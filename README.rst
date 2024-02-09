@@ -340,6 +340,39 @@ function:
        pytest.fail("+++ Timeout +++")
 
 
+
+Session Timeout
+===============
+
+The above mentioned timeouts are all per test function. You can also set a
+session timeout in seconds. The following example shows a session timeout
+of 10 minutes (600 seconds)::
+
+   pytest --session-timeout=600
+
+You can also set the session timeout the `pytest configuration file`__
+   using the ``session_timeout`` option:
+
+   .. code:: ini
+
+      [pytest]
+      session_timeout = 600
+
+Friendly timeouts
+-----------------
+
+Session timeouts are "friendly" timeouts. The plugin checks the session time at the end of
+each test function, and stops further tests from running if the session timeout is exceeded.
+
+Combining session and function
+------------------------------
+
+It works fine to combine both session and function timeouts.
+For example, to limit test functions to 5 seconds and the full session to 100 seconds::
+
+   pytest --timeout=5 --session-timeout=100
+
+
 Changelog
 =========
 
@@ -353,6 +386,7 @@ Unreleased
   This change also switches all output from ``sys.stderr`` to ``sys.stdout``.
   Thanks Pedro Algarvio.
 - Pytest 7.0.0 is now the minimum supported version.  Thanks Pedro Algarvio.
+- Add ``--session-timeout`` option and ``session_timeout`` setting.
 
 2.2.0
 -----
