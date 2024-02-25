@@ -344,9 +344,15 @@ function:
 Session Timeout
 ===============
 
-The above mentioned timeouts are all per test function. You can also set a
-session timeout in seconds. The following example shows a session timeout
-of 10 minutes (600 seconds)::
+The above mentioned timeouts are all per test function. 
+The "per test function" timeouts will stop an individual test
+from taking too long. We may also want to limit the time of the entire 
+set of tests running in one session. A session all of the tests
+that will be run with one invokation of pytest.
+
+A session timeout is set with `--session-timeout` and is in seconds.
+
+The following example shows a session timeout of 10 minutes (600 seconds)::
 
    pytest --session-timeout=600
 
@@ -357,14 +363,14 @@ You can also set the session timeout the pytest configuration file using the ``s
       [pytest]
       session_timeout = 600
 
-Friendly timeouts
+Cooperative timeouts
 -----------------
 
-Session timeouts are "friendly" timeouts. The plugin checks the session time at the end of
+Session timeouts are cooperative timeouts. The plugin checks the session time at the end of
 each test function, and stops further tests from running if the session timeout is exceeded.
 
-Combining session and function
-------------------------------
+Combining session and function timeouts
+---------------------------------------
 
 It works fine to combine both session and function timeouts.
 For example, to limit test functions to 5 seconds and the full session to 100 seconds::
