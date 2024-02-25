@@ -611,12 +611,9 @@ def test_plugin_interface(pytester):
 
 
 def test_session_timeout(pytester):
-    # 2 tests, each with 0.5 sec timeouts
-    # each using a fixture with 0.5 sec setup and 0.5 sec teardown
-    # So about 1.5 seconds per test, ~3 sec total,
-    # Therefore:
-    # A timeout of 1.25 sec should happen during the teardown of the first test
-    # and the second test should NOT be run
+    # This is designed to timeout during hte first test to ensure 
+    # - the first test still runs to completion
+    # - the second test is not started 
     pytester.makepyfile(
         """
         import time, pytest
@@ -636,7 +633,8 @@ def test_session_timeout(pytester):
     )
     result = pytester.runpytest_subprocess("--session-timeout", "2")
     result.stdout.fnmatch_lines(["*!! session-timeout: 2.0 sec exceeded !!!*"])
-    result.assert_outcomes(passed=1)
+    # This would be 2 passed if the second test was allowed to run
+    result.assert_outcomes(passed=1)  
 
 
 def test_ini_session_timeout(pytester):
