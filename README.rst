@@ -364,7 +364,7 @@ You can also set the session timeout the pytest configuration file using the ``s
       session_timeout = 600
 
 Cooperative timeouts
------------------
+--------------------
 
 Session timeouts are cooperative timeouts.  pytest-timeout checks the
 session time at the end of each test function, and stops further tests
@@ -391,6 +391,12 @@ to 100 seconds::
 
 Changelog
 =========
+
+2.3.1
+-----
+
+- Fixup some build errors, mostly README syntax which stopped twine
+  from uploading.
 
 2.3.0
 -----
