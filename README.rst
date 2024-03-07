@@ -392,8 +392,8 @@ to 100 seconds::
 Changelog
 =========
 
-Unreleased
-----------
+2.3.0
+-----
 
 - Fix debugger detection for recent VSCode, this compiles pydevd using
   cython which is now correctly detected.  Thanks Adrian Gielniewski.
