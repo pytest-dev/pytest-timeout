@@ -366,14 +366,25 @@ You can also set the session timeout the pytest configuration file using the ``s
 Cooperative timeouts
 -----------------
 
-Session timeouts are cooperative timeouts. The plugin checks the session time at the end of
-each test function, and stops further tests from running if the session timeout is exceeded.
+Session timeouts are cooperative timeouts.  pytest-timeout checks the
+session time at the end of each test function, and stops further tests
+from running if the session timeout is exceeded.  The session will
+results in a test failure if this occurs.
+
+In particular this means if a test does not finish of itself, it will
+only be interrupted if there is also a function timeout set.  A
+session timeout is not enough to ensure that a test-suite is
+guaranteed to finish.
 
 Combining session and function timeouts
 ---------------------------------------
 
-It works fine to combine both session and function timeouts.
-For example, to limit test functions to 5 seconds and the full session to 100 seconds::
+It works fine to combine both session and function timeouts.  In fact
+when using a session timeout it is recommended to also provide a
+function timeout.
+
+For example, to limit test functions to 5 seconds and the full session
+to 100 seconds::
 
    pytest --timeout=5 --session-timeout=100
 
@@ -392,6 +403,7 @@ Unreleased
   Thanks Pedro Algarvio.
 - Pytest 7.0.0 is now the minimum supported version.  Thanks Pedro Algarvio.
 - Add ``--session-timeout`` option and ``session_timeout`` setting.
+  Thanks Brian Okken.
 
 2.2.0
 -----
