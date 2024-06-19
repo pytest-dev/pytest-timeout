@@ -137,10 +137,10 @@ The downsides of this method are that there is a relatively large
 overhead for running each test and that test runs are not completed.
 This means that other pytest features, like e.g. JUnit XML output or
 fixture teardown, will not function normally.  The second issue might
-be alleviated by using the ``--boxed`` option of the pytest-xdist_
+be alleviated by using the ``--forked`` option of the pytest-forked_
 plugin.
 
-.. _pytest-xdist: https://pypi.org/project/pytest-xdist/
+.. _pytest-forked: https://pypi.org/project/pytest-forked/
 
 The benefit of this method is that it will always work.  Furthermore
 it will still provide you debugging information by printing the stacks
