@@ -495,7 +495,7 @@ def timeout_sigalrm(item, settings):
     dump_stacks(terminal)
     if nthreads > 1:
         terminal.sep("+", title="Timeout")
-    pytest.fail("Timeout >%ss" % settings.timeout)
+    pytest.fail("Timeout (>%ss) from pytest-timeout plugin." % settings.timeout)
 
 
 def timeout_timer(item, settings):
