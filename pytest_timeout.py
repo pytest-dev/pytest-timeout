@@ -21,7 +21,7 @@ import pytest
 __all__ = ("is_debugging", "Settings")
 SESSION_TIMEOUT_KEY = pytest.StashKey[float]()
 SESSION_EXPIRE_KEY = pytest.StashKey[float]()
-
+PYTEST_FAILURE_MESSAGE = "Timeout (>%ss) from pytest-timeout."
 
 HAVE_SIGALRM = hasattr(signal, "SIGALRM")
 if HAVE_SIGALRM:
@@ -495,7 +495,7 @@ def timeout_sigalrm(item, settings):
     dump_stacks(terminal)
     if nthreads > 1:
         terminal.sep("+", title="Timeout")
-    pytest.fail("Timeout (>%ss) from pytest-timeout plugin." % settings.timeout)
+    pytest.fail(PYTEST_FAILURE_MESSAGE % settings.timeout)
 
 
 def timeout_timer(item, settings):

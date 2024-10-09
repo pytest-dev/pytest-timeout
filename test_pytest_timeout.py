@@ -5,7 +5,10 @@ import time
 
 import pexpect
 import pytest
+from pytest_timeout import PYTEST_FAILURE_MESSAGE
 
+
+MATCH_FAILURE_MESSAGE = f"*Failed: {PYTEST_FAILURE_MESSAGE}*"
 pytest_plugins = "pytester"
 
 have_sigalrm = pytest.mark.skipif(
@@ -44,7 +47,7 @@ def test_sigalrm(pytester):
      """
     )
     result = pytester.runpytest_subprocess("--timeout=1")
-    result.stdout.fnmatch_lines(["*Failed: Timeout (>1.0s) from pytest-timeout plugin.*"])
+    result.stdout.fnmatch_lines([MATCH_FAILURE_MESSAGE % "1.0"])
 
 
 def test_thread(pytester):
@@ -239,7 +242,7 @@ def test_timeout_mark_sigalrm(pytester):
     """
     )
     result = pytester.runpytest_subprocess()
-    result.stdout.fnmatch_lines(["*Failed: Timeout (>1.0s) from pytest-timeout plugin.*"])
+    result.stdout.fnmatch_lines([MATCH_FAILURE_MESSAGE % "1.0"])
 
 
 def test_timeout_mark_timer(pytester):
