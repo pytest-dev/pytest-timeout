@@ -290,6 +290,10 @@ def is_debugging(trace_func=None):
         for name in KNOWN_DEBUGGING_MODULES:
             if any(part.startswith(name) for part in parts):
                 return True
+    
+    # For 3.12, sys.monitoring is used for tracing. Check if any debugger has been registered.
+    if hasattr(sys, "monitoring"):
+        return sys.monitoring.get_tool(sys.monitoring.DEBUGGER_ID) != None
     return False
 
 
