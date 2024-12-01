@@ -392,6 +392,12 @@ to 100 seconds::
 Changelog
 =========
 
+x.y.z
+-----
+
+- Detect debuggers registered with sys.monitoring.  Thanks Rich
+  Chiodo.
+
 2.3.1
 -----
 
