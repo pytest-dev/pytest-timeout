@@ -413,6 +413,7 @@ x.y.z
   directly to ``sys.{stdout,stderr}``.
   This change also switches all output from ``sys.stderr`` to ``sys.stdout``.
   Thanks Pedro Algarvio.
+- *Breaking change*, remove `write_title` and API change of `dump_stack`.
 - Pytest 7.0.0 is now the minimum supported version.  Thanks Pedro Algarvio.
 - Add ``--session-timeout`` option and ``session_timeout`` setting.
   Thanks Brian Okken.
