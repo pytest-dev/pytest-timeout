@@ -392,11 +392,13 @@ to 100 seconds::
 Changelog
 =========
 
-x.y.z
+2.4.0
 -----
 
 - Detect debuggers registered with sys.monitoring.  Thanks Rich
   Chiodo.
+- Make it clear the timeout message comes from pytest-timeout.  Thanks
+  Pedro Brochado.
 
 2.3.1
 -----
