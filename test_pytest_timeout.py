@@ -5,6 +5,7 @@ import time
 
 import pexpect
 import pytest
+
 from pytest_timeout import PYTEST_FAILURE_MESSAGE
 
 
@@ -614,9 +615,9 @@ def test_plugin_interface(pytester):
 
 
 def test_session_timeout(pytester):
-    # This is designed to timeout during hte first test to ensure 
+    # This is designed to timeout during the first test to ensure
     # - the first test still runs to completion
-    # - the second test is not started 
+    # - the second test is not started
     pytester.makepyfile(
         """
         import time, pytest
@@ -637,7 +638,7 @@ def test_session_timeout(pytester):
     result = pytester.runpytest_subprocess("--session-timeout", "2")
     result.stdout.fnmatch_lines(["*!! session-timeout: 2.0 sec exceeded !!!*"])
     # This would be 2 passed if the second test was allowed to run
-    result.assert_outcomes(passed=1)  
+    result.assert_outcomes(passed=1)
 
 
 def test_ini_session_timeout(pytester):
