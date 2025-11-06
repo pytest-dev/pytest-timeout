@@ -180,7 +180,7 @@ def pytest_runtest_protocol(item):
     """Hook in timeouts to the runtest protocol.
 
     If the timeout is set on the entire test, including setup and
-    teardown, then this hook installs the timeout.  Otherwise
+    teardown, then this hook installs the timeout. Otherwise
     pytest_runtest_call is used.
     """
     hooks = item.config.pluginmanager.hook
@@ -290,10 +290,11 @@ def is_debugging(trace_func=None):
         for name in KNOWN_DEBUGGING_MODULES:
             if any(part.startswith(name) for part in parts):
                 return True
-    
-    # For 3.12, sys.monitoring is used for tracing. Check if any debugger has been registered.
+
+    # For 3.12, sys.monitoring is used for tracing.
+    # Check if any debugger has been registered.
     if hasattr(sys, "monitoring"):
-        return sys.monitoring.get_tool(sys.monitoring.DEBUGGER_ID) != None
+        return sys.monitoring.get_tool(sys.monitoring.DEBUGGER_ID) is not None
     return False
 
 
@@ -485,7 +486,7 @@ def _validate_disable_debugger_detection(disable_debugger_detection, where):
 def timeout_sigalrm(item, settings):
     """Dump stack of threads and raise an exception.
 
-    This will output the stacks of any threads other then the
+    This will output the stacks of any threads other than the
     current to stderr and then raise an AssertionError, thus
     terminating the test.
     """
