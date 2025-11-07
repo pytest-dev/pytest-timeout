@@ -8,11 +8,6 @@ jobs:
       fail-fast: false
       matrix:
         python:
-          - v: "3.7"
-            tox_env: "py37"
-          - v: "3.7"
-            tox_env: "py37"
-            pre_releases: "--pre"
           - v: "3.8"
             tox_env: "py38"
           - v: "3.9"
