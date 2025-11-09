@@ -227,7 +227,7 @@ def pytest_report_header(config):
 
     session_timeout = config.getoption("session_timeout")
     if session_timeout:
-        timeout_header.append(f"session timeout: {session_timeout}s")
+        timeout_header.append("session timeout: %ss" % session_timeout)
     if timeout_header:
         return timeout_header
     return None
