@@ -8,7 +8,6 @@ import pytest
 
 from pytest_timeout import PYTEST_FAILURE_MESSAGE
 
-
 MATCH_FAILURE_MESSAGE = f"*Failed: {PYTEST_FAILURE_MESSAGE}*"
 pytest_plugins = "pytester"
 
@@ -136,7 +135,7 @@ def test_timeout_env(pytester, monkeypatch):
 @pytest.mark.parametrize("scope", ["function", "class", "module", "session"])
 def test_fix_setup(meth, scope, pytester):
     pytester.makepyfile(
-        """
+        f"""
         import time, pytest
 
         class TestFoo:
@@ -147,9 +146,7 @@ def test_fix_setup(meth, scope, pytester):
 
             def test_foo(self, fix):
                 pass
-    """.format(
-            scope=scope
-        )
+    """
     )
     result = pytester.runpytest_subprocess("--timeout=1", f"--timeout-method={meth}")
     assert result.ret > 0
@@ -466,15 +463,13 @@ def test_suppresses_timeout_when_debugger_is_entered(
     pytester, debugging_module, debugging_set_trace
 ):
     p1 = pytester.makepyfile(
-        """
+        f"""
         import pytest, {debugging_module}
 
         @pytest.mark.timeout(1)
         def test_foo():
             {debugging_module}.{debugging_set_trace}
-    """.format(
-            debugging_module=debugging_module, debugging_set_trace=debugging_set_trace
-        )
+    """
     )
     child = pytester.spawn_pytest(str(p1))
     child.expect("test_foo")
@@ -512,15 +507,13 @@ def test_disable_debugger_detection_flag(
     pytester, debugging_module, debugging_set_trace
 ):
     p1 = pytester.makepyfile(
-        """
+        f"""
         import pytest, {debugging_module}
 
         @pytest.mark.timeout(1)
         def test_foo():
             {debugging_module}.{debugging_set_trace}
-    """.format(
-            debugging_module=debugging_module, debugging_set_trace=debugging_set_trace
-        )
+    """
     )
     child = pytester.spawn_pytest(f"{p1} --timeout-disable-debugger-detection")
     child.expect("test_foo")

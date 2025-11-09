@@ -1,50 +1,55 @@
 ---
 repos:
   - repo: https://github.com/psf/black
-    rev: 23.12.1
+    rev: 25.11.0
     hooks:
       - id: black
-        args: [--safe, --quiet, --target-version, py37]
+        args: [--safe, --quiet, --target-version, py310]
   - repo: https://github.com/asottile/blacken-docs
-    rev: 1.16.0
+    rev: 1.20.0
     hooks:
       - id: blacken-docs
-        additional_dependencies: [black==23.12.1]
+        additional_dependencies: [black==25.9.0]
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v6.0.0
     hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      - id: fix-encoding-pragma
-        args: [--remove]
+      - id: check-ast
+      - id: check-case-conflict
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-toml
       - id: check-yaml
+      - id: check-illegal-windows-names
+      - id: check-symlinks
+      - id: check-added-large-files
+        args: ['--maxkb=500']
       - id: debug-statements
+      - id: destroyed-symlinks
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      - id: trailing-whitespace
         language_version: python3
   - repo: https://github.com/PyCQA/flake8
     rev: 7.0.0
     hooks:
       - id: flake8
         language_version: python3
-        additional_dependencies: [flake8-typing-imports==1.15.0]
-  - repo: https://github.com/PyCQA/flake8
+        additional_dependencies: [flake8-typing-imports==1.17.0]
+  - repo: https://github.com/pycqa/isort
     rev: 7.0.0
     hooks:
-      - id: flake8
-        language_version: python3
-  - repo: https://github.com/asottile/reorder_python_imports
-    rev: v3.12.0
-    hooks:
-      - id: reorder-python-imports
+      - id: isort
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.15.0
+    rev: v3.21.1
     hooks:
       - id: pyupgrade
-        args: [--keep-percent-format, --py37-plus]
+        args: [--keep-percent-format, --py310-plus]
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0
     hooks:
       - id: rst-backticks
   - repo: https://github.com/adrienverge/yamllint.git
-    rev: v1.33.0
+    rev: v1.37.1
     hooks:
       - id: yamllint
