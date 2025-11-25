@@ -6,6 +6,7 @@ useful when running tests on a continuous integration server.
 If the platform supports SIGALRM this is used to raise an exception in
 the test, otherwise os._exit(1) is used.
 """
+
 import inspect
 import os
 import signal
@@ -17,17 +18,13 @@ from collections import namedtuple
 
 import pytest
 
-
-__all__ = ("is_debugging", "Settings")
+__all__ = ("Settings", "is_debugging")
 SESSION_TIMEOUT_KEY = pytest.StashKey[float]()
 SESSION_EXPIRE_KEY = pytest.StashKey[float]()
 PYTEST_FAILURE_MESSAGE = "Timeout (>%ss) from pytest-timeout."
 
 HAVE_SIGALRM = hasattr(signal, "SIGALRM")
-if HAVE_SIGALRM:
-    DEFAULT_METHOD = "signal"
-else:
-    DEFAULT_METHOD = "thread"
+DEFAULT_METHOD = "signal" if HAVE_SIGALRM else "thread"
 TIMEOUT_DESC = """
 Timeout in seconds before dumping the stacks.  Default is 0 which
 means no timeout.
@@ -112,7 +109,7 @@ class TimeoutHooks:
     """Timeout specific hooks."""
 
     @pytest.hookspec(firstresult=True)
-    def pytest_timeout_set_timer(item, settings):
+    def pytest_timeout_set_timer(self, item, settings):
         """Called at timeout setup.
 
         'item' is a pytest node to setup timeout for.
@@ -122,7 +119,7 @@ class TimeoutHooks:
         """
 
     @pytest.hookspec(firstresult=True)
-    def pytest_timeout_cancel_timer(item):
+    def pytest_timeout_cancel_timer(self, item):
         """Called at timeout teardown.
 
         'item' is a pytest node which was used for timeout setup.
@@ -223,12 +220,9 @@ def pytest_report_header(config):
 
     if config._env_timeout:
         timeout_header.append(
-            "timeout: %ss\ntimeout method: %s\ntimeout func_only: %s"
-            % (
-                config._env_timeout,
-                config._env_timeout_method,
-                config._env_timeout_func_only,
-            )
+            f"timeout: {config._env_timeout}s\n"
+            f"timeout method: {config._env_timeout_method}\n"
+            f"timeout func_only: {config._env_timeout_func_only}"
         )
 
     session_timeout = config.getoption("session_timeout")
@@ -236,6 +230,7 @@ def pytest_report_header(config):
         timeout_header.append("session timeout: %ss" % session_timeout)
     if timeout_header:
         return timeout_header
+    return None
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -249,10 +244,10 @@ def pytest_exception_interact(node):
 def pytest_enter_pdb():
     """Stop the timeouts when we entered pdb.
 
-    This stops timeouts from triggering when pytest's builting pdb
+    This stops timeouts from triggering when pytest's builtin pdb
     support notices we entered pdb.
     """
-    # Since pdb.set_trace happens outside of any pytest control, we don't have
+    # Since pdb.set_trace happens outside any pytest control, we don't have
     # any pytest ``item`` here, so we cannot use timeout_teardown. Thus, we
     # need another way to signify that the timeout should not be performed.
     global SUPPRESS_TIMEOUT
@@ -326,7 +321,7 @@ def pytest_timeout_set_timer(item, settings):
         signal.setitimer(signal.ITIMER_REAL, settings.timeout)
     elif timeout_method == "thread":
         timer = threading.Timer(settings.timeout, timeout_timer, (item, settings))
-        timer.name = "%s %s" % (__name__, item.nodeid)
+        timer.name = f"{__name__} {item.nodeid}"
 
         def cancel():
             timer.cancel()
@@ -427,14 +422,15 @@ def _parse_marker(marker):
         elif kw == "func_only":
             func_only = val
         else:
-            raise TypeError("Invalid keyword argument for timeout marker: %s" % kw)
+            msg = f"Invalid keyword argument for timeout marker: {kw}"
+            raise TypeError(msg)
     if len(marker.args) >= 1 and timeout is not NOTSET:
         raise TypeError("Multiple values for timeout argument of timeout marker")
-    elif len(marker.args) >= 1:
+    if len(marker.args) >= 1:
         timeout = marker.args[0]
     if len(marker.args) >= 2 and method is not NOTSET:
         raise TypeError("Multiple values for method argument of timeout marker")
-    elif len(marker.args) >= 2:
+    if len(marker.args) >= 2:
         method = marker.args[1]
     if len(marker.args) > 2:
         raise TypeError("Too many arguments for timeout marker")
@@ -453,14 +449,16 @@ def _validate_timeout(timeout, where):
     try:
         return float(timeout)
     except ValueError:
-        raise ValueError("Invalid timeout %s from %s" % (timeout, where))
+        msg = f"Invalid timeout {timeout} from {where}"
+        raise ValueError(msg)
 
 
 def _validate_method(method, where):
     if method is None:
         return None
     if method not in ["signal", "thread"]:
-        raise ValueError("Invalid method %s from %s" % (method, where))
+        msg = f"Invalid method {method} from {where}"
+        raise ValueError(msg)
     return method
 
 
@@ -468,7 +466,8 @@ def _validate_func_only(func_only, where):
     if func_only is None:
         return None
     if not isinstance(func_only, bool):
-        raise ValueError("Invalid func_only value %s from %s" % (func_only, where))
+        msg = f"Invalid func_only value {func_only} from {where}"
+        raise ValueError(msg)
     return func_only
 
 
@@ -555,5 +554,5 @@ def dump_stacks(terminal):
                 break
         else:
             thread_name = "<unknown>"
-        terminal.sep("~", title="Stack of %s (%s)" % (thread_name, thread_ident))
+        terminal.sep("~", title=f"Stack of {thread_name} ({thread_ident})")
         terminal.write("".join(traceback.format_stack(frame)))
