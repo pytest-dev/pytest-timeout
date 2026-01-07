@@ -440,7 +440,7 @@ def test_marker_help(pytester):
 
 
 @pytest.mark.parametrize(
-    ["debugging_module", "debugging_set_trace"],
+    ("debugging_module", "debugging_set_trace"),
     [
         ("pdb", "set_trace()"),
         pytest.param(
@@ -484,7 +484,7 @@ def test_suppresses_timeout_when_debugger_is_entered(
 
 
 @pytest.mark.parametrize(
-    ["debugging_module", "debugging_set_trace"],
+    ("debugging_module", "debugging_set_trace"),
     [
         ("pdb", "set_trace()"),
         pytest.param(

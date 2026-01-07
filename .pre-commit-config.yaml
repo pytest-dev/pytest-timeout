@@ -1,15 +1,12 @@
 ---
 repos:
-  - repo: https://github.com/psf/black
-    rev: 25.11.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.10
     hooks:
-      - id: black
-        args: [--safe, --quiet, --target-version, py310]
-  - repo: https://github.com/asottile/blacken-docs
-    rev: 1.20.0
-    hooks:
-      - id: blacken-docs
-        additional_dependencies: [black==25.11.0]
+      - id: ruff-format
+      - id: ruff-check
+        args: [--fix]
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -33,26 +30,18 @@ repos:
         args:
           - --pytest-test-first
         language_version: python3
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.0.0
-    hooks:
-      - id: flake8
-        language_version: python3
-        additional_dependencies: [flake8-typing-imports==1.17.0]
-  - repo: https://github.com/pycqa/isort
-    rev: 7.0.0
-    hooks:
-      - id: isort
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.1
-    hooks:
-      - id: pyupgrade
-        args: [--keep-percent-format, --py310-plus]
+
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0
     hooks:
       - id: rst-backticks
+
   - repo: https://github.com/adrienverge/yamllint.git
     rev: v1.37.1
     hooks:
       - id: yamllint
+
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.40.0
+    hooks:
+      - id: typos

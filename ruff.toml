@@ -1,0 +1,76 @@
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "migrations",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+
+line-length = 88 # like black
+target-version = "py310"
+fix = true
+unsafe-fixes = true
+
+
+[lint]
+select = [
+    "E",        # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "N",        # pep8-naming
+    "UP",       # pyupgrade
+    "B",        # bugbear
+    "C4",       # comprehensions
+    "SIM",      # simplify
+    "TID",      # tidy imports
+    "G",        # f-string is forbidden
+    "T",        # print is forbidden
+    "FURB",     # Refurb
+    "ASYNC",    # flake8-async
+    "PERF",     # Perflint
+    "PLE",      # pylint (error)
+    "T10",      # flake8-debugger
+    "EXE",      # flake8-executable
+    "INT",      # flake8-gettext
+    "ISC",      # flake8-implicit-str-concat
+    "PT",       # pytest
+    "LOG",      # logging
+    "S",        # bandit
+]
+ignore = [
+    "S311",     # Random
+]
+[lint.per-file-ignores]
+"*test_*" = ["S101"] # asserts in tests
+
+[lint.isort]
+combine-as-imports = true
+force-wrap-aliases = true
+split-on-trailing-comma = true
+
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
