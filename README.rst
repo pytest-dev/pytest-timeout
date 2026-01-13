@@ -394,6 +394,7 @@ Changelog
 
 x.y.z
 -----
+- Add ruff and typos linters, drop black/isort/flake8 linters. Thanks Vladimir Roshchin.
 - Minimum support Python3.10 and pytest=8.0. Thanks Vladimir Roshchin.
 - Add support Python3.13 and Python3.14. Thanks Vladimir Roshchin.
 - Detect debuggers registered with sys.monitoring. Thanks Rich Chiodo.

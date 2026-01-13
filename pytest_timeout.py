@@ -227,7 +227,7 @@ def pytest_report_header(config):
 
     session_timeout = config.getoption("session_timeout")
     if session_timeout:
-        timeout_header.append("session timeout: %ss" % session_timeout)
+        timeout_header.append(f"session timeout: {session_timeout}s")
     if timeout_header:
         return timeout_header
     return None
@@ -413,7 +413,7 @@ def _parse_marker(marker):
     """
     if not marker.args and not marker.kwargs:
         raise TypeError("Timeout marker must have at least one argument")
-    timeout = method = func_only = NOTSET = object()
+    timeout = method = func_only = NOTSET = object()  # noqa: N806
     for kw, val in marker.kwargs.items():
         if kw == "timeout":
             timeout = val
@@ -448,9 +448,8 @@ def _validate_timeout(timeout, where):
         return None
     try:
         return float(timeout)
-    except ValueError:
-        msg = f"Invalid timeout {timeout} from {where}"
-        raise ValueError(msg)
+    except ValueError as err:
+        raise ValueError(f"Invalid timeout {timeout} from {where}") from err
 
 
 def _validate_method(method, where):
@@ -476,8 +475,8 @@ def _validate_disable_debugger_detection(disable_debugger_detection, where):
         return None
     if not isinstance(disable_debugger_detection, bool):
         raise ValueError(
-            "Invalid disable_debugger_detection value %s from %s"
-            % (disable_debugger_detection, where)
+            f"Invalid disable_debugger_detection value {disable_debugger_detection}"
+            f" from {where}"
         )
     return disable_debugger_detection
 
