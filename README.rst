@@ -394,6 +394,7 @@ Changelog
 
 x.y.z
 -----
+- Fix fixture teardowns not timing out after failed tests. Thanks Timofey Peshin.
 - Add ruff and typos linters, drop black/isort/flake8 linters. Thanks Vladimir Roshchin.
 - Minimum support Python3.10 and pytest=8.0. Thanks Vladimir Roshchin.
 - Add support Python3.13 and Python3.14. Thanks Vladimir Roshchin.

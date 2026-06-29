@@ -176,9 +176,10 @@ def test_fix_setup_func_only(pytester):
 
 @pytest.mark.parametrize("meth", [pytest.param("signal", marks=have_sigalrm), "thread"])
 @pytest.mark.parametrize("scope", ["function", "class", "module", "session"])
-def test_fix_finalizer(meth, scope, pytester):
+@pytest.mark.parametrize("pass_test", [False, True])
+def test_fix_finalizer(meth, scope, pass_test, pytester):
     pytester.makepyfile(
-        """
+        f"""
         import time, pytest
 
         class TestFoo:
@@ -192,7 +193,7 @@ def test_fix_finalizer(meth, scope, pytester):
                 request.addfinalizer(fin)
 
             def test_foo(self, fix):
-                pass
+                assert {pass_test}
     """
     )
     result = pytester.runpytest_subprocess(
