@@ -233,13 +233,6 @@ def pytest_report_header(config):
     return None
 
 
-@pytest.hookimpl(tryfirst=True)
-def pytest_exception_interact(node):
-    """Stop the timeout when pytest enters pdb in post-mortem mode."""
-    hooks = node.config.pluginmanager.hook
-    hooks.pytest_timeout_cancel_timer(item=node)
-
-
 @pytest.hookimpl
 def pytest_enter_pdb():
     """Stop the timeouts when we entered pdb.
