@@ -392,7 +392,7 @@ to 100 seconds::
 Changelog
 =========
 
-x.y.z
+2.5.0
 -----
 
 - Fix fixture teardowns not timing out after failed tests. Thanks Timofey Peshin.
@@ -400,6 +400,9 @@ x.y.z
 - Minimum support Python3.10 and pytest=8.0. Thanks Vladimir Roshchin.
 - Add support Python3.13 and Python3.14. Thanks Vladimir Roshchin.
 - Detect debuggers registered with sys.monitoring. Thanks Rich Chiodo.
+- Declare timeout options as float, bumps minimal pytest version to 8.4. Thanks zxyasfas.
+- Default timeout_disable_debugger_detection to None. Thanks Rahul Kumar.
+- Drop pypy support. Thanks Floris Bruynooghe.
 
 2.4.0
 -----
