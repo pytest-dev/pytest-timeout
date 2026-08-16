@@ -1,33 +1,41 @@
 name: Release
+
 on:
   release:
     types: [published]
 
 jobs:
-  release:
-    name: Upload release to PyPI
+  package:
+    name: Build and inspect package
     runs-on: ubuntu-latest
     if: github.repository_owner == 'pytest-dev'
-
     permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write  # For build provenance attestation.
+      attestations: write
 
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v5
+      - name: Build package and attest build provenance
+        uses: hynek/build-and-inspect-python-package@v3
         with:
-          python-version: 3.x
+          attest-build-provenance-github: 'true'
 
-      - name: Install dependencies
-        run: |
-          python -m pip install -U pip
-          python -m pip install -U build
+  publish:
+    name: Upload release to PyPI
+    needs: package
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'pytest-dev'
+    environment: release
+    permissions:
+      id-token: write  # For PyPI Trusted Publishing.
 
-      - name: Build package
-        run: |
-          python -m build
-          python -m twine check dist/*
-
+    steps:
+      - name: Download package
+        uses: actions/download-artifact@v8
+        with:
+          name: Packages
+          path: dist
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          attestations: true
