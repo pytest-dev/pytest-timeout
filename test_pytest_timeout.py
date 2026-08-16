@@ -347,6 +347,31 @@ def test_ini_timeout(pytester):
     assert result.ret
 
 
+@pytest.mark.skipif(
+    pytest.version_tuple < (9, 0),
+    reason="native [tool.pytest] table requires pytest 9",
+)
+def test_pyproject_toml_int_timeout(pytester):
+    pytester.makepyfile(
+        """
+        import time
+
+        def test_foo():
+            time.sleep(2)
+    """
+    )
+    pytester.makepyprojecttoml(
+        """
+        [tool.pytest]
+        timeout = 1
+        session_timeout = 60
+    """
+    )
+    result = pytester.runpytest_subprocess()
+    result.stdout.no_fnmatch_line("INTERNALERROR*")
+    assert result.ret
+
+
 def test_ini_timeout_func_only(pytester):
     pytester.makepyfile(
         """
