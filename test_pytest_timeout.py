@@ -681,6 +681,88 @@ def test_plugin_interface(pytester):
     )
 
 
+@pytest.mark.parametrize(
+    ("claim", "debugging", "disable_debugger_detection"),
+    [
+        (None, False, False),
+        (False, False, False),
+        (True, False, False),
+        (True, True, False),
+        (True, True, True),
+    ],
+)
+def test_signal_expiry_hook(
+    request, monkeypatch, claim, debugging, disable_debugger_detection
+):
+    import pytest_timeout
+
+    settings = pytest_timeout.Settings(1.0, "signal", False, disable_debugger_detection)
+    events = []
+    monkeypatch.setattr(pytest_timeout, "is_debugging", lambda: debugging)
+    monkeypatch.setattr(
+        pytest_timeout, "dump_stacks", lambda terminal: events.append(None)
+    )
+
+    class Plugin:
+        def pytest_timeout_expired(self, item, settings, exception):
+            events.append((item, settings, exception))
+            return claim
+
+    plugin = Plugin()
+    pluginmanager = request.config.pluginmanager
+    pluginmanager.register(plugin)
+    try:
+        suppressed = debugging and not disable_debugger_detection
+        if suppressed or claim is True:
+            pytest_timeout.timeout_sigalrm(request.node, settings)
+        else:
+            with pytest.raises(pytest.fail.Exception) as caught:
+                pytest_timeout.timeout_sigalrm(request.node, settings)
+            assert caught.value is events[-1][2]
+    finally:
+        pluginmanager.unregister(plugin)
+
+    if suppressed:
+        assert events == []
+    else:
+        assert len(events) == 2
+        assert events[0] is None  # Stack diagnostics precede delivery.
+        item, received_settings, exception = events[1]
+        assert item is request.node
+        assert received_settings is settings
+        assert isinstance(exception, pytest.fail.Exception)
+        assert str(exception) == PYTEST_FAILURE_MESSAGE % settings.timeout
+
+
+def test_signal_expiry_hook_is_scoped_to_item(pytester):
+    pytester.makepyfile(
+        **{
+            "scoped/conftest": """
+                def pytest_timeout_expired(item, settings, exception):
+                    return True
+            """,
+            "scoped/test_scoped": """
+                import pytest_timeout
+
+                def test_claimed(request):
+                    settings = pytest_timeout.Settings(1, "signal", False, True)
+                    pytest_timeout.timeout_sigalrm(request.node, settings)
+            """,
+            "test_unscoped": """
+                import pytest
+                import pytest_timeout
+
+                def test_unclaimed(request):
+                    settings = pytest_timeout.Settings(1, "signal", False, True)
+                    with pytest.raises(pytest.fail.Exception):
+                        pytest_timeout.timeout_sigalrm(request.node, settings)
+            """,
+        }
+    )
+    result = pytester.runpytest_subprocess()
+    result.assert_outcomes(passed=2)
+
+
 def test_session_timeout(pytester):
     # This is designed to timeout during the first test to ensure
     # - the first test still runs to completion

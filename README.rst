@@ -260,9 +260,8 @@ variable.
 Extending pytest-timeout with plugins
 =====================================
 
-``pytest-timeout`` provides two hooks that can be used for extending the tool. These
-hooks are used for setting the timeout timer and cancelling it if the timeout is not
-reached.
+``pytest-timeout`` provides hooks for replacing the timeout timer or delivering a
+signal timeout through another plugin's execution boundary.
 
 For example, ``pytest-asyncio`` can provide asyncio-specific code that generates better
 traceback and points on timed out ``await`` instead of the running loop iteration.
@@ -320,6 +319,31 @@ The argument has ``Settings`` namedtuple type with the following fields:
 
        Can be overridden by plugins for alternative timeout implementation strategies.
        """
+
+``pytest_timeout_expired``
+--------------------------
+
+.. code:: python
+
+   @pytest.hookspec(firstresult=True)
+   def pytest_timeout_expired(item, settings, exception):
+       """Return True to take responsibility for reporting a signal timeout."""
+
+This hook runs synchronously inside the ``SIGALRM`` handler, after debugger
+detection and stack diagnostics. ``exception`` is the ``pytest.fail.Exception``
+instance that would normally interrupt the test. Return ``None`` to decline;
+unless an implementation returns ``True``, pytest-timeout raises that same
+exception immediately.
+
+A plugin that returns ``True`` must arrange to report the supplied exception at
+its execution boundary. For example, an async test runner can request task
+cancellation and raise the exception when the task finishes. The hook does not
+rearm the one-shot signal timer or provide a cleanup deadline. Cooperative
+cancellation cannot stop a blocked event loop or a task that refuses to finish;
+use an independent process watchdog when termination must be guaranteed.
+
+The hook is not called for the ``thread`` method, which still terminates the
+process. It does not change which test phases the configured timeout covers.
 
 ``is_debugging``
 ----------------
@@ -391,6 +415,12 @@ to 100 seconds::
 
 Changelog
 =========
+
+Unreleased
+----------
+
+- Add ``pytest_timeout_expired`` so plugins can deliver a signal timeout at
+  their own execution boundary without replacing its timer or debugger handling.
 
 2.5.0
 -----
