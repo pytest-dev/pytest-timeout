@@ -94,7 +94,7 @@ def pytest_addoption(parser):
         metavar="SECONDS",
         help=SESSION_TIMEOUT_DESC,
     )
-    parser.addini("timeout", TIMEOUT_DESC, type="float")
+    parser.addini("timeout", TIMEOUT_DESC)
     parser.addini("timeout_method", METHOD_DESC)
     parser.addini("timeout_func_only", FUNC_ONLY_DESC, type="bool", default=False)
     parser.addini(
@@ -103,7 +103,7 @@ def pytest_addoption(parser):
         type="bool",
         default=False,
     )
-    parser.addini("session_timeout", SESSION_TIMEOUT_DESC, type="float")
+    parser.addini("session_timeout", SESSION_TIMEOUT_DESC)
 
 
 class TimeoutHooks:
