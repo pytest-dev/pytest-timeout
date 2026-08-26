@@ -376,8 +376,19 @@ def test_pyproject_toml_int_timeout(pytester):
     pytest.version_tuple < (9, 0),
     reason="native [tool.pytest] table requires pytest 9",
 )
-def test_pyproject_toml_str_timeout(pytester):
-    """Regression test for #203: accept string timeout values in pyproject.toml."""
+@pytest.mark.parametrize(
+    ("toml_timeout", "toml_session_timeout"),
+    [
+        pytest.param('"1"', '"60"', id="quoted-string"),
+        pytest.param("1", "60", id="unquoted-int"),
+    ],
+)
+def test_pyproject_toml_timeout(pytester, toml_timeout, toml_session_timeout):
+    """Regression test for #203: accept timeout values in pyproject.toml.
+
+    Both quoted (string) and unquoted (int) forms should work in the
+    ``[tool.pytest]`` table (``timeout = "1"`` and ``timeout = 1``).
+    """
     pytester.makepyfile(
         """
         import time
@@ -387,15 +398,15 @@ def test_pyproject_toml_str_timeout(pytester):
     """
     )
     pytester.makepyprojecttoml(
-        """
+        f"""
         [tool.pytest]
-        timeout = "1"
-        session_timeout = "60"
+        timeout = {toml_timeout}
+        session_timeout = {toml_session_timeout}
     """
     )
     result = pytester.runpytest_subprocess()
-    result.stdout.no_fnmatch_line("INTERNALERROR*")
-    assert result.ret
+    result.stdout.fnmatch_lines([MATCH_FAILURE_MESSAGE % "1.0"])
+    result.assert_outcomes(failed=1)
 
 
 def test_ini_timeout_func_only(pytester):
