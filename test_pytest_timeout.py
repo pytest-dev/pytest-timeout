@@ -621,25 +621,39 @@ def test_is_debugging(monkeypatch):
 
 
 def test_not_main_thread(pytester):
-    pytest.skip("The 'pytest_timeout.timeout_setup' function no longer exists")
-    pytester.makepyfile(
+    pytester.makeconftest(
         """
         import threading
+
+        import pytest
         import pytest_timeout
 
-        current_timeout_setup = pytest_timeout.timeout_setup
 
-        def new_timeout_setup(item):
-            threading.Thread(
-                target=current_timeout_setup, args=(item),
-            ).join()
+        @pytest.hookimpl(tryfirst=True)
+        def pytest_timeout_set_timer(item, settings):
+            errors = []
 
-        pytest_timeout.timeout_setup = new_timeout_setup
+            def set_timer():
+                try:
+                    pytest_timeout.pytest_timeout_set_timer(item, settings)
+                except BaseException as exc:
+                    errors.append(exc)
 
+            thread = threading.Thread(target=set_timer)
+            thread.start()
+            thread.join()
+            if errors:
+                raise errors[0]
+            return True
+        """
+    )
+    pytester.makepyfile(
+        """
         def test_x(): pass
     """
     )
     result = pytester.runpytest_subprocess("--timeout=1")
+    result.assert_outcomes(passed=1)
     result.stdout.fnmatch_lines(
         ["timeout: 1.0s", "timeout method:*", "timeout func_only:*"]
     )
