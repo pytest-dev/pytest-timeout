@@ -708,6 +708,46 @@ def test_session_timeout(pytester):
     result.assert_outcomes(passed=1)
 
 
+@pytest.mark.parametrize(
+    ("wall_shift", "elapsed", "passed"), [(1000, 1, 2), (-1000, 11, 1)]
+)
+def test_session_timeout_ignores_wall_clock_changes(
+    pytester, wall_shift, elapsed, passed
+):
+    pytester.makeconftest(
+        """
+        from types import SimpleNamespace
+        import pytest
+        import pytest_timeout
+
+        clock = SimpleNamespace(wall=100, elapsed=0)
+
+        @pytest.hookimpl(tryfirst=True)
+        def pytest_configure(config):
+            pytest_timeout.time = SimpleNamespace(
+                time=lambda: clock.wall,
+                monotonic=lambda: clock.elapsed,
+            )
+        """
+    )
+    pytester.makepyfile(
+        f"""
+        from conftest import clock
+
+        def test_one():
+            clock.wall += {wall_shift}
+            clock.elapsed += {elapsed}
+
+        def test_two():
+            pass
+        """
+    )
+    result = pytester.runpytest_subprocess("--session-timeout=10")
+    result.assert_outcomes(passed=passed)
+    if passed == 1:
+        result.stdout.fnmatch_lines(["*session-timeout: 10.0 sec exceeded*"])
+
+
 def test_ini_session_timeout(pytester):
     pytester.makepyfile(
         """

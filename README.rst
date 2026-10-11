@@ -351,6 +351,8 @@ set of tests running in one session. A session all of the tests
 that will be run with one invocation of pytest.
 
 A session timeout is set with ``--session-timeout`` and is in seconds.
+Elapsed session time uses a monotonic clock, so changes to the system clock
+do not affect the timeout.
 
 The following example shows a session timeout of 10 minutes (600 seconds)::
 
