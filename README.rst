@@ -10,7 +10,7 @@ pytest-timeout
 .. |anaconda| image:: https://img.shields.io/conda/vn/conda-forge/pytest-timeout.svg
   :target: https://anaconda.org/conda-forge/pytest-timeout
 
-.. |ci| image:: https://github.com/pytest-dev/pytest-timeout/workflows/build/badge.svg
+.. |ci| image:: https://github.com/pytest-dev/pytest-timeout/actions/workflows/test.yml/badge.svg
   :target: https://github.com/pytest-dev/pytest-timeout/actions
 
 .. |python| image:: https://img.shields.io/pypi/pyversions/pytest-timeout.svg
