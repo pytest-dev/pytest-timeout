@@ -726,3 +726,19 @@ def test_ini_session_timeout(pytester):
     result = pytester.runpytest_subprocess()
     result.stdout.fnmatch_lines(["*!! session-timeout: 1.0 sec exceeded !!!*"])
     result.assert_outcomes(passed=1)
+
+
+@pytest.mark.parametrize("disabled", [True, False])
+def test_debugger_detection_marker(pytester, disabled):
+    pytester.makepyfile(f"""
+        import pytest
+        import pytest_timeout
+
+        @pytest.mark.timeout(0, disable_debugger_detection={disabled})
+        def test_settings(request):
+            settings = pytest_timeout._get_item_settings(request.node)
+            assert settings.disable_debugger_detection is {disabled}
+    """)
+    result = pytester.runpytest_subprocess()
+    result.assert_outcomes(passed=1)
+    assert result.ret == 0
