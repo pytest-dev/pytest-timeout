@@ -71,9 +71,6 @@ def test_thread(pytester):
     assert "++ Timeout ++" in result.stdout.lines[-1]
 
 
-@pytest.mark.skipif(
-    hasattr(sys, "pypy_version_info"), reason="pypy coverage seems broken currently"
-)
 def test_cov(pytester):
     # This test requires pytest-cov
     pytest.importorskip("pytest_cov")
