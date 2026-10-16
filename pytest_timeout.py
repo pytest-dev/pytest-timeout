@@ -129,6 +129,18 @@ class TimeoutHooks:
 
         """
 
+    @pytest.hookspec(firstresult=True)
+    def pytest_timeout_expired(self, item, settings, exception):
+        """Deliver a signal timeout after debugger checks and stack diagnostics.
+
+        Called synchronously from the signal handler. Return True to take
+        responsibility for reporting the supplied pytest.fail.Exception at a
+        safe execution boundary, or None to retain the default behavior.
+        The default behavior raises the same exception immediately.
+        Claiming delivery does not rearm the timer or guarantee termination.
+        This hook is not called for the thread timeout method.
+        """
+
 
 def pytest_addhooks(pluginmanager):
     """Register timeout-specific hooks."""
@@ -476,12 +488,7 @@ def _validate_disable_debugger_detection(disable_debugger_detection, where):
 
 
 def timeout_sigalrm(item, settings):
-    """Dump stack of threads and raise an exception.
-
-    This will output the stacks of any threads other than the
-    current to stderr and then raise an AssertionError, thus
-    terminating the test.
-    """
+    """Dump thread stacks and deliver the timeout failure."""
     if not settings.disable_debugger_detection and is_debugging():
         return
     __tracebackhide__ = True
@@ -492,7 +499,12 @@ def timeout_sigalrm(item, settings):
     dump_stacks(terminal)
     if nthreads > 1:
         terminal.sep("+", title="Timeout")
-    pytest.fail(PYTEST_FAILURE_MESSAGE % settings.timeout)
+    exception = pytest.fail.Exception(PYTEST_FAILURE_MESSAGE % settings.timeout)
+    handled = item.ihook.pytest_timeout_expired(
+        item=item, settings=settings, exception=exception
+    )
+    if handled is not True:
+        raise exception
 
 
 def timeout_timer(item, settings):
