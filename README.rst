@@ -392,6 +392,11 @@ to 100 seconds::
 Changelog
 =========
 
+Unreleased
+----------
+
+- Add support Python3.15. Thanks Vladimir Roshchin.
+
 2.5.0
 -----
 
