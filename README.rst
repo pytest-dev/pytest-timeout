@@ -392,6 +392,11 @@ to 100 seconds::
 Changelog
 =========
 
+Unreleased
+----------
+
+- Block signals in timer threads so tests can control their own signal masks.
+
 2.5.0
 -----
 
