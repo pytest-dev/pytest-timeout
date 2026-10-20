@@ -1,7 +1,7 @@
 ---
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.10
+    rev: v0.17.1
     hooks:
       - id: ruff-format
       - id: ruff-check
@@ -37,11 +37,11 @@ repos:
       - id: rst-backticks
 
   - repo: https://github.com/adrienverge/yamllint.git
-    rev: v1.37.1
+    rev: v1.38.0
     hooks:
       - id: yamllint
 
   - repo: https://github.com/crate-ci/typos
-    rev: v1.42.0
+    rev: v1.51.1
     hooks:
       - id: typos
