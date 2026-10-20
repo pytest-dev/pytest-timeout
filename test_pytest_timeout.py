@@ -369,6 +369,58 @@ def test_pyproject_toml_int_timeout(pytester):
     assert result.ret
 
 
+@pytest.mark.skipif(
+    pytest.version_tuple < (9, 0),
+    reason="native [tool.pytest] table requires pytest 9",
+)
+@pytest.mark.parametrize(
+    ("toml_timeout", "toml_session_timeout"),
+    [
+        pytest.param('"1"', '"60"', id="quoted-string"),
+        pytest.param("1", "60", id="unquoted-int"),
+    ],
+)
+def test_pyproject_toml_timeout(pytester, toml_timeout, toml_session_timeout):
+    """Regression test for #203: accept timeout values in pyproject.toml.
+
+    Both quoted (string) and unquoted (int) forms should work in the
+    ``[tool.pytest]`` table (``timeout = "1"`` and ``timeout = 1``).
+
+    The thread timeout method is forced so the assertions are portable:
+    the signal method is unavailable on Windows (where thread is the
+    default), and its timeout output differs from the thread method's
+    stack dump plus ``+++ Timeout +++`` markers. A configuration failure
+    would exit 3 instead of reaching the timeout, so asserting the
+    timeout output and exit status also proves the values parsed.
+    """
+    pytester.makepyfile(
+        """
+        import time
+
+        def test_foo():
+            time.sleep(2)
+    """
+    )
+    pytester.makepyprojecttoml(
+        f"""
+        [tool.pytest]
+        timeout = {toml_timeout}
+        session_timeout = {toml_session_timeout}
+    """
+    )
+    result = pytester.runpytest_subprocess("--timeout-method=thread")
+    result.stdout.fnmatch_lines(
+        [
+            "*++ Timeout ++*",
+            "*~~ Stack of MainThread* ~~*",
+            "*File *, line *, in *",
+            "*++ Timeout ++*",
+        ]
+    )
+    assert "++ Timeout ++" in result.stdout.lines[-1]
+    assert result.ret == 1
+
+
 def test_ini_timeout_func_only(pytester):
     pytester.makepyfile(
         """

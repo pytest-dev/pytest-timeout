@@ -57,6 +57,20 @@ Settings = namedtuple(
 )
 
 
+def _get_ini_value(config, name):
+    """Read an ini option, falling back to the raw config for non-string TOML values.
+
+    On pytest 9+ the ``"string"`` ini-type rejects non-string TOML values
+    (e.g. ``timeout = 1``), but ``"float"`` rejects quoted strings such as
+    ``timeout = "1"``.  We register the option with the default string type
+    and catch the ``TypeError`` here so both representations work.
+    """
+    try:
+        return config.getini(name)
+    except TypeError:
+        return config.inicfg.get(name)
+
+
 @pytest.hookimpl
 def pytest_addoption(parser):
     """Add options to control the timeout plugin."""
@@ -94,7 +108,7 @@ def pytest_addoption(parser):
         metavar="SECONDS",
         help=SESSION_TIMEOUT_DESC,
     )
-    parser.addini("timeout", TIMEOUT_DESC, type="float")
+    parser.addini("timeout", TIMEOUT_DESC)
     parser.addini("timeout_method", METHOD_DESC)
     parser.addini("timeout_func_only", FUNC_ONLY_DESC, type="bool", default=False)
     parser.addini(
@@ -103,7 +117,7 @@ def pytest_addoption(parser):
         type="bool",
         default=False,
     )
-    parser.addini("session_timeout", SESSION_TIMEOUT_DESC, type="float")
+    parser.addini("session_timeout", SESSION_TIMEOUT_DESC)
 
 
 class TimeoutHooks:
@@ -161,9 +175,9 @@ def pytest_configure(config):
 
     timeout = config.getoption("session_timeout")
     if timeout is None:
-        ini = config.getini("session_timeout")
+        ini = _get_ini_value(config, "session_timeout")
         if ini:
-            timeout = _validate_timeout(config.getini("session_timeout"), "config file")
+            timeout = _validate_timeout(ini, "config file")
     if timeout is not None:
         expire_time = time.time() + timeout
     else:
@@ -350,7 +364,7 @@ def get_env_settings(config):
             os.environ.get("PYTEST_TIMEOUT"), "PYTEST_TIMEOUT environment variable"
         )
     if timeout is None:
-        ini = config.getini("timeout")
+        ini = _get_ini_value(config, "timeout")
         if ini:
             timeout = _validate_timeout(ini, "config file")
 
