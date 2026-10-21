@@ -396,6 +396,7 @@ Unreleased
 ----------
 
 - Block signals in timer threads so tests can control their own signal masks.
+- Add support Python3.15. Thanks Vladimir Roshchin.
 
 2.5.0
 -----
