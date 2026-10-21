@@ -1,7 +1,9 @@
 import os.path
 import signal
 import sys
+import threading
 import time
+from types import SimpleNamespace
 
 import pexpect
 import pytest
@@ -69,6 +71,83 @@ def test_thread(pytester):
         ]
     )
     assert "++ Timeout ++" in result.stdout.lines[-1]
+
+
+@pytest.mark.skipif(
+    not hasattr(signal, "pthread_sigmask"), reason="OS has no pthread_sigmask"
+)
+def test_thread_timer_blocks_signals(monkeypatch):
+    import pytest_timeout
+
+    masks = []
+    completed = threading.Event()
+
+    def timeout_timer(item, settings):
+        masks.append(signal.pthread_sigmask(signal.SIG_BLOCK, []))
+        completed.set()
+
+    monkeypatch.setattr(pytest_timeout, "timeout_timer", timeout_timer)
+    item = SimpleNamespace(nodeid="test_thread_timer_blocks_signals")
+    settings = pytest_timeout.Settings(0, "thread", False, False)
+    original_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGUSR1})
+    try:
+        caller_mask = signal.pthread_sigmask(signal.SIG_BLOCK, [])
+        pytest_timeout.pytest_timeout_set_timer(item, settings)
+        try:
+            assert completed.wait(5)
+        finally:
+            pytest_timeout.pytest_timeout_cancel_timer(item)
+        assert masks == [signal.valid_signals() - {signal.SIGKILL, signal.SIGSTOP}]
+        assert signal.pthread_sigmask(signal.SIG_BLOCK, []) == caller_mask
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, original_mask)
+
+
+@pytest.mark.skipif(
+    not hasattr(signal, "pthread_sigmask"), reason="OS has no pthread_sigmask"
+)
+def test_thread_timer_start_error_restores_signal_mask(monkeypatch):
+    import pytest_timeout
+
+    masks = []
+
+    def start(timer):
+        masks.append(signal.pthread_sigmask(signal.SIG_BLOCK, []))
+        raise RuntimeError("Cannot start timer")
+
+    monkeypatch.setattr(threading.Timer, "start", start)
+    item = SimpleNamespace(nodeid="test_thread_timer_start_error")
+    settings = pytest_timeout.Settings(0, "thread", False, False)
+    caller_mask = signal.pthread_sigmask(signal.SIG_BLOCK, [])
+    try:
+        with pytest.raises(RuntimeError, match="Cannot start timer"):
+            pytest_timeout.pytest_timeout_set_timer(item, settings)
+        assert signal.pthread_sigmask(signal.SIG_BLOCK, []) == caller_mask
+        assert masks == [signal.valid_signals() - {signal.SIGKILL, signal.SIGSTOP}]
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, caller_mask)
+
+
+def test_thread_timer_without_pthread_sigmask(monkeypatch):
+    import pytest_timeout
+
+    calls = []
+    completed = threading.Event()
+
+    def timeout_timer(item, settings):
+        calls.append(item)
+        completed.set()
+
+    monkeypatch.delattr(signal, "pthread_sigmask", raising=False)
+    monkeypatch.setattr(pytest_timeout, "timeout_timer", timeout_timer)
+    item = SimpleNamespace(nodeid="test_thread_timer_without_pthread_sigmask")
+    settings = pytest_timeout.Settings(0, "thread", False, False)
+    pytest_timeout.pytest_timeout_set_timer(item, settings)
+    try:
+        assert completed.wait(5)
+    finally:
+        pytest_timeout.pytest_timeout_cancel_timer(item)
+    assert calls == [item]
 
 
 def test_cov(pytester):
