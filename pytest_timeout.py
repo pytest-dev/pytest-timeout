@@ -165,7 +165,7 @@ def pytest_configure(config):
         if ini:
             timeout = _validate_timeout(config.getini("session_timeout"), "config file")
     if timeout is not None:
-        expire_time = time.time() + timeout
+        expire_time = time.monotonic() + timeout
     else:
         expire_time = 0
         timeout = 0
@@ -192,7 +192,7 @@ def pytest_runtest_protocol(item):
 
     #  check session timeout
     expire_time = item.session.config.stash[SESSION_EXPIRE_KEY]
-    if expire_time and (expire_time < time.time()):
+    if expire_time and (expire_time < time.monotonic()):
         timeout = item.session.config.stash[SESSION_TIMEOUT_KEY]
         item.session.shouldfail = f"session-timeout: {timeout} sec exceeded"
 
