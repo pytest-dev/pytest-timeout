@@ -462,6 +462,27 @@ def test_marker_help(pytester):
     result.stdout.fnmatch_lines(["@pytest.mark.timeout(*"])
 
 
+def test_timeout_marker_disable_debugger_detection_keyword(pytester):
+    # the marker registration documents the disable_debugger_detection
+    # keyword, so using it must not fail with an invalid-kwarg TypeError
+    pytester.makepyfile(
+        """
+        import pytest
+
+        @pytest.mark.timeout(60, disable_debugger_detection=True)
+        def test_marker_kwarg_ok():
+            assert True
+
+        @pytest.mark.timeout(60, method="thread", func_only=True,
+                            disable_debugger_detection=True)
+        def test_marker_kwarg_with_others_ok():
+            assert True
+        """
+    )
+    result = pytester.runpytest_subprocess()
+    result.assert_outcomes(passed=2)
+
+
 @pytest.mark.parametrize(
     ("debugging_module", "debugging_set_trace"),
     [
