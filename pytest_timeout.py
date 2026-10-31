@@ -407,7 +407,7 @@ def _parse_marker(marker):
     """
     if not marker.args and not marker.kwargs:
         raise TypeError("Timeout marker must have at least one argument")
-    timeout = method = func_only = NOTSET = object()  # noqa: N806
+    timeout = method = func_only = disable_debugger_detection = NOTSET = object()  # noqa: N806
     for kw, val in marker.kwargs.items():
         if kw == "timeout":
             timeout = val
@@ -415,6 +415,8 @@ def _parse_marker(marker):
             method = val
         elif kw == "func_only":
             func_only = val
+        elif kw == "disable_debugger_detection":
+            disable_debugger_detection = val
         else:
             msg = f"Invalid keyword argument for timeout marker: {kw}"
             raise TypeError(msg)
@@ -434,7 +436,9 @@ def _parse_marker(marker):
         method = None
     if func_only is NOTSET:
         func_only = None
-    return Settings(timeout, method, func_only, None)
+    if disable_debugger_detection is NOTSET:
+        disable_debugger_detection = None
+    return Settings(timeout, method, func_only, disable_debugger_detection)
 
 
 def _validate_timeout(timeout, where):
