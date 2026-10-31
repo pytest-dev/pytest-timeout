@@ -15,6 +15,7 @@ import threading
 import time
 import traceback
 from collections import namedtuple
+from contextlib import ExitStack
 
 import pytest
 
@@ -502,41 +503,45 @@ def timeout_sigalrm(item, settings):
 def timeout_timer(item, settings):
     """Dump stack of threads and call os._exit().
 
-    This disables the capturemanager and dumps stdout and stderr.
+    This disables global and fixture capturing and dumps stdout and stderr.
     Then the stacks are dumped and os._exit(1) is called.
     """
     if not settings.disable_debugger_detection and is_debugging():
         return
     terminal = item.config.get_terminal_writer()
-    try:
-        capman = item.config.pluginmanager.getplugin("capturemanager")
-        if capman:
-            capman.suspend_global_capture(item)
-            stdout, stderr = capman.read_global_capture()
-        else:
-            stdout, stderr = None, None
-        terminal.sep("+", title="Timeout")
-        caplog = item.config.pluginmanager.getplugin("_capturelog")
-        if caplog and hasattr(item, "capturelog_handler"):
-            log = item.capturelog_handler.stream.getvalue()
-            if log:
-                terminal.sep("~", title="Captured log")
-                terminal.write(log)
-        if stdout:
-            terminal.sep("~", title="Captured stdout")
-            terminal.write(stdout)
-        if stderr:
-            terminal.sep("~", title="Captured stderr")
-            terminal.write(stderr)
-        dump_stacks(terminal)
-        terminal.sep("+", title="Timeout")
-    except Exception:
-        traceback.print_exc()
-    finally:
-        terminal.flush()
-        sys.stdout.flush()
-        sys.stderr.flush()
-        os._exit(1)
+    with ExitStack() as stack:
+        try:
+            capman = item.config.pluginmanager.getplugin("capturemanager")
+            if capman:
+                # Flush fixture buffers into global capture before reading it.
+                # No test or fixture teardown will run after os._exit below.
+                capman.deactivate_fixture()
+                stack.enter_context(capman.global_and_fixture_disabled())
+                stdout, stderr = capman.read_global_capture()
+            else:
+                stdout, stderr = None, None
+            terminal.sep("+", title="Timeout")
+            caplog = item.config.pluginmanager.getplugin("_capturelog")
+            if caplog and hasattr(item, "capturelog_handler"):
+                log = item.capturelog_handler.stream.getvalue()
+                if log:
+                    terminal.sep("~", title="Captured log")
+                    terminal.write(log)
+            if stdout:
+                terminal.sep("~", title="Captured stdout")
+                terminal.write(stdout)
+            if stderr:
+                terminal.sep("~", title="Captured stderr")
+                terminal.write(stderr)
+            dump_stacks(terminal)
+            terminal.sep("+", title="Timeout")
+        except Exception:
+            traceback.print_exc()
+        finally:
+            terminal.flush()
+            sys.stdout.flush()
+            sys.stderr.flush()
+            os._exit(1)
 
 
 def dump_stacks(terminal):
