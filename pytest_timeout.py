@@ -322,7 +322,17 @@ def pytest_timeout_set_timer(item, settings):
             timer.join()
 
         item.cancel_timeout = cancel
-        timer.start()
+        if hasattr(signal, "pthread_sigmask"):
+            # The timer must not receive signals intended for the test.
+            previous_mask = signal.pthread_sigmask(
+                signal.SIG_BLOCK, signal.valid_signals()
+            )
+            try:
+                timer.start()
+            finally:
+                signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        else:
+            timer.start()
     return True
 
 
