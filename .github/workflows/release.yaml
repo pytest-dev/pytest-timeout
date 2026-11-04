@@ -15,6 +15,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+      - name: Check that the tag matches the version in setup.cfg
+        run: |
+          version=$(sed -n 's/^version = //p' setup.cfg)
+          if [ "$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME, but setup.cfg declares $version"
+            exit 1
+          fi
       - name: Build package and attest build provenance
         uses: hynek/build-and-inspect-python-package@v3
         with:
