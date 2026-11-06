@@ -392,9 +392,11 @@ to 100 seconds::
 Changelog
 =========
 
-Unreleased
-----------
+X.Y.Z
+-----
 
+- Preserve capture-fixture output and disable fixture capturing when reporting
+  thread timeouts. Thanks Arham Begani.
 - Add support Python3.15. Thanks Vladimir Roshchin.
 
 2.5.0
