@@ -14,7 +14,7 @@ jobs:
       attestations: write
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Build package and attest build provenance
         uses: hynek/build-and-inspect-python-package@v3
         with:

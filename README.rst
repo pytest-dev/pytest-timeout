@@ -48,8 +48,8 @@ hangs.
    stage. See below for detailed information on the timeout methods
    and their side-effects.
 
-The pytest-timeout plugin has been tested on Python 3.7 and higher,
-including PyPy3. See tox.ini for currently tested versions.
+The pytest-timeout plugin is tested on CPython 3.10 through 3.15.
+See tox.ini for currently tested versions.
 
 
 Usage
@@ -167,7 +167,7 @@ Specifying the Timeout Method
 -----------------------------
 
 The timeout method can be specified by using the ``timeout_method``
-option in the `pytest configuration file`__, the ``--timeout_method``
+option in the `pytest configuration file`__, the ``--timeout-method``
 command line parameter or the ``timeout`` marker_. Simply set their
 value to the string ``thread`` or ``signal`` to override the default
 method. On a marker this is done using the ``method`` keyword:
@@ -397,6 +397,7 @@ X.Y.Z
 
 - Preserve capture-fixture output and disable fixture capturing when reporting
   thread timeouts. Thanks Arham Begani.
+- Add support Python3.15. Thanks Vladimir Roshchin.
 
 2.5.0
 -----
