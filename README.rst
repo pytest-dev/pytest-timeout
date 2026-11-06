@@ -392,11 +392,15 @@ to 100 seconds::
 Changelog
 =========
 
-2.5.0
+X.Y.Z
 -----
 
 - Preserve capture-fixture output and disable fixture capturing when reporting
   thread timeouts. Thanks Arham Begani.
+
+2.5.0
+-----
+
 - Fix fixture teardowns not timing out after failed tests. Thanks Timofey Peshin.
 - Add ruff and typos linters, drop black/isort/flake8 linters. Thanks Vladimir Roshchin.
 - Minimum support Python3.10 and pytest=8.0. Thanks Vladimir Roshchin.
