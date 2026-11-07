@@ -103,6 +103,15 @@ defined in a number of ways, from low to high priority:
       def test_foo():
           pass
 
+   The marker also accepts a ``datetime.timedelta``, which makes the
+   unit explicit:
+
+   .. code:: python
+
+      @pytest.mark.timeout(datetime.timedelta(minutes=5))
+      def test_foo():
+          pass
+
 __ https://docs.pytest.org/en/latest/reference.html#ini-options-ref
 
 .. _marker: https://docs.pytest.org/en/latest/mark.html

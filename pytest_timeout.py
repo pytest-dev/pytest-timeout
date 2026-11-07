@@ -7,6 +7,7 @@ If the platform supports SIGALRM this is used to raise an exception in
 the test, otherwise os._exit(1) is used.
 """
 
+import datetime
 import inspect
 import os
 import signal
@@ -445,6 +446,8 @@ def _parse_marker(marker):
 def _validate_timeout(timeout, where):
     if timeout is None:
         return None
+    if isinstance(timeout, datetime.timedelta):
+        return timeout.total_seconds()
     try:
         return float(timeout)
     except ValueError as err:
