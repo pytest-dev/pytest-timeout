@@ -317,6 +317,38 @@ def test_timeout_mark_non_int(pytester):
     result.stdout.fnmatch_lines(["*++ Timeout ++*"])
 
 
+@pytest.mark.parametrize(
+    "arg",
+    ["datetime.timedelta(seconds=0.01)", "timeout=datetime.timedelta(seconds=0.01)"],
+)
+def test_timeout_mark_timedelta(arg, pytester):
+    pytester.makepyfile(
+        f"""
+        import datetime, time, pytest
+
+        @pytest.mark.timeout({arg})
+        def test_foo():
+            time.sleep(1)
+    """
+    )
+    result = pytester.runpytest_subprocess("--timeout-method=thread")
+    result.stdout.fnmatch_lines(["*++ Timeout ++*"])
+
+
+def test_timeout_mark_timedelta_not_exceeded(pytester):
+    pytester.makepyfile(
+        """
+        import datetime, pytest
+
+        @pytest.mark.timeout(datetime.timedelta(minutes=5))
+        def test_foo():
+            pass
+    """
+    )
+    result = pytester.runpytest_subprocess()
+    result.assert_outcomes(passed=1)
+
+
 def test_timeout_mark_non_number(pytester):
     pytester.makepyfile(
         """
