@@ -575,6 +575,34 @@ def test_suppresses_timeout_when_debugger_is_entered(
     assert "fail" not in result
 
 
+@have_spawn
+def test_timeout_resumes_after_debugger_session(pytester):
+    """Leaving pdb in one test must not switch timeouts off for the next one."""
+    p1 = pytester.makepyfile(
+        """
+        import time, pdb, pytest
+
+        @pytest.mark.timeout(1)
+        def test_foo():
+            pdb.set_trace()
+
+        @pytest.mark.timeout(1)
+        def test_bar():
+            time.sleep(3)
+    """
+    )
+    child = pytester.spawn_pytest(str(p1))
+    child.expect("test_foo")
+    time.sleep(0.2)
+    child.send("c\n")
+    child.sendeof()
+    result = child.read().decode().lower()
+    if child.isalive():
+        child.terminate(force=True)
+    assert "timeout (>1.0s)" in result
+    assert "1 failed, 1 passed" in result
+
+
 @pytest.mark.parametrize(
     ("debugging_module", "debugging_set_trace"),
     [
