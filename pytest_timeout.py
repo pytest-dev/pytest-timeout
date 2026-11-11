@@ -15,6 +15,7 @@ import threading
 import time
 import traceback
 from collections import namedtuple
+from contextlib import ExitStack
 
 import pytest
 
@@ -417,7 +418,7 @@ def _parse_marker(marker):
     """
     if not marker.args and not marker.kwargs:
         raise TypeError("Timeout marker must have at least one argument")
-    timeout = method = func_only = NOTSET = object()  # noqa: N806
+    timeout = method = func_only = disable_debugger_detection = NOTSET = object()  # noqa: N806
     for kw, val in marker.kwargs.items():
         if kw == "timeout":
             timeout = val
@@ -425,6 +426,8 @@ def _parse_marker(marker):
             method = val
         elif kw == "func_only":
             func_only = val
+        elif kw == "disable_debugger_detection":
+            disable_debugger_detection = val
         else:
             msg = f"Invalid keyword argument for timeout marker: {kw}"
             raise TypeError(msg)
@@ -444,7 +447,9 @@ def _parse_marker(marker):
         method = None
     if func_only is NOTSET:
         func_only = None
-    return Settings(timeout, method, func_only, None)
+    if disable_debugger_detection is NOTSET:
+        disable_debugger_detection = None
+    return Settings(timeout, method, func_only, disable_debugger_detection)
 
 
 def _validate_timeout(timeout, where):
@@ -508,41 +513,45 @@ def timeout_sigalrm(item, settings):
 def timeout_timer(item, settings):
     """Dump stack of threads and call os._exit().
 
-    This disables the capturemanager and dumps stdout and stderr.
+    This disables global and fixture capturing and dumps stdout and stderr.
     Then the stacks are dumped and os._exit(1) is called.
     """
     if not settings.disable_debugger_detection and is_debugging():
         return
     terminal = item.config.get_terminal_writer()
-    try:
-        capman = item.config.pluginmanager.getplugin("capturemanager")
-        if capman:
-            capman.suspend_global_capture(item)
-            stdout, stderr = capman.read_global_capture()
-        else:
-            stdout, stderr = None, None
-        terminal.sep("+", title="Timeout")
-        caplog = item.config.pluginmanager.getplugin("_capturelog")
-        if caplog and hasattr(item, "capturelog_handler"):
-            log = item.capturelog_handler.stream.getvalue()
-            if log:
-                terminal.sep("~", title="Captured log")
-                terminal.write(log)
-        if stdout:
-            terminal.sep("~", title="Captured stdout")
-            terminal.write(stdout)
-        if stderr:
-            terminal.sep("~", title="Captured stderr")
-            terminal.write(stderr)
-        dump_stacks(terminal)
-        terminal.sep("+", title="Timeout")
-    except Exception:
-        traceback.print_exc()
-    finally:
-        terminal.flush()
-        sys.stdout.flush()
-        sys.stderr.flush()
-        os._exit(1)
+    with ExitStack() as stack:
+        try:
+            capman = item.config.pluginmanager.getplugin("capturemanager")
+            if capman:
+                # Flush fixture buffers into global capture before reading it.
+                # No test or fixture teardown will run after os._exit below.
+                capman.deactivate_fixture()
+                stack.enter_context(capman.global_and_fixture_disabled())
+                stdout, stderr = capman.read_global_capture()
+            else:
+                stdout, stderr = None, None
+            terminal.sep("+", title="Timeout")
+            caplog = item.config.pluginmanager.getplugin("_capturelog")
+            if caplog and hasattr(item, "capturelog_handler"):
+                log = item.capturelog_handler.stream.getvalue()
+                if log:
+                    terminal.sep("~", title="Captured log")
+                    terminal.write(log)
+            if stdout:
+                terminal.sep("~", title="Captured stdout")
+                terminal.write(stdout)
+            if stderr:
+                terminal.sep("~", title="Captured stderr")
+                terminal.write(stderr)
+            dump_stacks(terminal)
+            terminal.sep("+", title="Timeout")
+        except Exception:
+            traceback.print_exc()
+        finally:
+            terminal.flush()
+            sys.stdout.flush()
+            sys.stderr.flush()
+            os._exit(1)
 
 
 def dump_stacks(terminal):

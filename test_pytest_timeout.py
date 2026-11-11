@@ -150,6 +150,54 @@ def test_thread_timer_without_pthread_sigmask(monkeypatch):
     assert calls == [item]
 
 
+@pytest.mark.parametrize("capture", ["fd", "no"])
+@pytest.mark.parametrize("fixture", ["capsys", "capfd", "capsysbinary", "capfdbinary"])
+def test_thread_with_capture_fixture(pytester, capture, fixture):
+    pytester.makepyfile(
+        f"""
+        import sys
+        import time
+
+        def test_foo({fixture}):
+            print("FIXTURE STDOUT")
+            print("FIXTURE STDERR", file=sys.stderr)
+            time.sleep(10)
+        """
+    )
+
+    result = pytester.runpytest_subprocess(
+        "--timeout=1", "--timeout-method=thread", f"--capture={capture}", timeout=20
+    )
+
+    assert result.ret == 1
+    assert any(line.endswith("FIXTURE STDOUT") for line in result.stdout.lines)
+    assert any(
+        line.endswith("FIXTURE STDERR")
+        for line in result.stdout.lines + result.stderr.lines
+    )
+    result.stdout.fnmatch_lines(["*++ Timeout ++*", "*~~ Stack of MainThread* ~~*"])
+
+
+def test_thread_without_capture_plugin(pytester):
+    pytester.makepyfile(
+        """
+        import time
+
+        def test_foo():
+            print("UNCAPTURED STDOUT", flush=True)
+            time.sleep(10)
+        """
+    )
+
+    result = pytester.runpytest_subprocess(
+        "--timeout=1", "--timeout-method=thread", "-p", "no:capture", timeout=20
+    )
+
+    assert result.ret == 1
+    assert any(line.endswith("UNCAPTURED STDOUT") for line in result.stdout.lines)
+    result.stdout.fnmatch_lines(["*++ Timeout ++*", "*~~ Stack of MainThread* ~~*"])
+
+
 def test_cov(pytester):
     # This test requires pytest-cov
     pytest.importorskip("pytest_cov")
@@ -539,6 +587,27 @@ def test_timeout_marker_inheritance(pytester):
 def test_marker_help(pytester):
     result = pytester.runpytest_subprocess("--markers")
     result.stdout.fnmatch_lines(["@pytest.mark.timeout(*"])
+
+
+def test_timeout_marker_disable_debugger_detection_keyword(pytester):
+    # the marker registration documents the disable_debugger_detection
+    # keyword, so using it must not fail with an invalid-kwarg TypeError
+    pytester.makepyfile(
+        """
+        import pytest
+
+        @pytest.mark.timeout(60, disable_debugger_detection=True)
+        def test_marker_kwarg_ok():
+            assert True
+
+        @pytest.mark.timeout(60, method="thread", func_only=True,
+                            disable_debugger_detection=True)
+        def test_marker_kwarg_with_others_ok():
+            assert True
+        """
+    )
+    result = pytester.runpytest_subprocess()
+    result.assert_outcomes(passed=2)
 
 
 @pytest.mark.parametrize(
