@@ -395,6 +395,8 @@ Changelog
 X.Y.Z
 -----
 
+- Block signals in timer threads so tests can control their own signal masks.
+
 - Preserve capture-fixture output and disable fixture capturing when reporting
   thread timeouts. Thanks Arham Begani.
 - Add support Python3.15. Thanks Vladimir Roshchin.
