@@ -182,6 +182,10 @@ def pytest_runtest_protocol(item):
     teardown, then this hook installs the timeout. Otherwise
     pytest_runtest_call is used.
     """
+    # A debugger session in an earlier test must not keep suppressing timeouts
+    # for this one.
+    global SUPPRESS_TIMEOUT
+    SUPPRESS_TIMEOUT = False
     hooks = item.config.pluginmanager.hook
     settings = _get_item_settings(item)
     is_timeout = settings.timeout is not None and settings.timeout > 0
