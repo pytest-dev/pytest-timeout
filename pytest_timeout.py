@@ -22,6 +22,8 @@ import pytest
 __all__ = ("Settings", "is_debugging")
 SESSION_TIMEOUT_KEY = pytest.StashKey[float]()
 SESSION_EXPIRE_KEY = pytest.StashKey[float]()
+TIMEOUT_EXIT_CODE_KEY = pytest.StashKey[int | None]()
+TIMEOUT_OCCURRED_KEY = pytest.StashKey[bool]()
 PYTEST_FAILURE_MESSAGE = "Timeout (>%ss) from pytest-timeout."
 
 HAVE_SIGALRM = hasattr(signal, "SIGALRM")
@@ -80,6 +82,13 @@ def pytest_addoption(parser):
         help=METHOD_DESC,
     )
     group.addoption(
+        "--timeout-exit-code",
+        action="store",
+        type=int,
+        default=None,
+        help="Use this exit code when a test timeout occurs.",
+    )
+    group.addoption(
         "--timeout-disable-debugger-detection",
         dest="timeout_disable_debugger_detection",
         action="store_true",
@@ -97,6 +106,13 @@ def pytest_addoption(parser):
     )
     parser.addini("timeout", TIMEOUT_DESC, type="float")
     parser.addini("timeout_method", METHOD_DESC)
+    parser.addini(
+        "timeout_exit_code",
+        "Exit code to use when a test timeout occurs (defaults to pytest's normal "
+        "failure code).",
+        type="int",
+        default=None,
+    )
     parser.addini("timeout_func_only", FUNC_ONLY_DESC, type="bool", default=False)
     parser.addini(
         "timeout_disable_debugger_detection",
@@ -172,6 +188,22 @@ def pytest_configure(config):
         timeout = 0
     config.stash[SESSION_TIMEOUT_KEY] = timeout
     config.stash[SESSION_EXPIRE_KEY] = expire_time
+
+    timeout_exit_code = config.getoption("timeout_exit_code")
+    if timeout_exit_code is None:
+        timeout_exit_code = config.getini("timeout_exit_code")
+    if timeout_exit_code is not None and not 1 <= timeout_exit_code <= 255:
+        raise pytest.UsageError("timeout_exit_code must be between 1 and 255")
+    config.stash[TIMEOUT_EXIT_CODE_KEY] = timeout_exit_code
+    config.stash[TIMEOUT_OCCURRED_KEY] = False
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_sessionfinish(session, exitstatus):
+    """Apply the configured exit code if any test timed out."""
+    timeout_exit_code = session.config.stash[TIMEOUT_EXIT_CODE_KEY]
+    if timeout_exit_code is not None and session.config.stash[TIMEOUT_OCCURRED_KEY]:
+        session.exitstatus = timeout_exit_code
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -489,6 +521,7 @@ def timeout_sigalrm(item, settings):
     """
     if not settings.disable_debugger_detection and is_debugging():
         return
+    item.config.stash[TIMEOUT_OCCURRED_KEY] = True
     __tracebackhide__ = True
     nthreads = len(threading.enumerate())
     terminal = item.config.get_terminal_writer()
@@ -508,6 +541,7 @@ def timeout_timer(item, settings):
     """
     if not settings.disable_debugger_detection and is_debugging():
         return
+    item.config.stash[TIMEOUT_OCCURRED_KEY] = True
     terminal = item.config.get_terminal_writer()
     with ExitStack() as stack:
         try:
@@ -541,7 +575,8 @@ def timeout_timer(item, settings):
             terminal.flush()
             sys.stdout.flush()
             sys.stderr.flush()
-            os._exit(1)
+            timeout_exit_code = item.config.stash[TIMEOUT_EXIT_CODE_KEY]
+            os._exit(timeout_exit_code if timeout_exit_code is not None else 1)
 
 
 def dump_stacks(terminal):

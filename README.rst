@@ -239,6 +239,19 @@ must specify the option explicitly again:
        pass
 
 
+Detecting a Test Timeout
+========================
+
+By default, a test timeout uses pytest's normal failing exit code. To distinguish a
+timeout from other test failures in a wrapper script, configure a timeout-specific
+exit code with ``--timeout-exit-code`` (or the ``timeout_exit_code`` ini setting)::
+
+   pytest --timeout=10 --timeout-exit-code=124
+
+The configured code is used for both the ``signal`` and ``thread`` timeout methods.
+Without this option, the existing exit-code behavior is unchanged.
+
+
 Debugger Detection
 ==================
 
@@ -395,6 +408,7 @@ Changelog
 X.Y.Z
 -----
 
+- Add a timeout-specific exit code option.
 - Preserve capture-fixture output and disable fixture capturing when reporting
   thread timeouts. Thanks Arham Begani.
 - Add support Python3.15. Thanks Vladimir Roshchin.
