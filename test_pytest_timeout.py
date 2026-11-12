@@ -71,6 +71,49 @@ def test_thread(pytester):
     assert "++ Timeout ++" in result.stdout.lines[-1]
 
 
+@pytest.mark.parametrize("method", ["signal", "thread"])
+def test_timeout_exit_code(pytester, method):
+    if method == "signal" and not hasattr(signal, "SIGALRM"):
+        pytest.skip("OS does not have SIGALRM")
+
+    pytester.makepyfile(
+        """
+        import time
+
+        def test_foo():
+            time.sleep(2)
+        """
+    )
+    result = pytester.runpytest_subprocess(
+        "--timeout=0.1",
+        f"--timeout-method={method}",
+        "--timeout-exit-code=23",
+    )
+    assert result.ret == 23
+    assert "Timeout" in result.stdout.str() + result.stderr.str()
+
+
+def test_timeout_exit_code_ini(pytester):
+    pytester.makeini(
+        """
+        [pytest]
+        timeout = 0.1
+        timeout_method = thread
+        timeout_exit_code = 23
+        """
+    )
+    pytester.makepyfile(
+        """
+        import time
+
+        def test_foo():
+            time.sleep(2)
+        """
+    )
+    result = pytester.runpytest_subprocess()
+    assert result.ret == 23
+
+
 @pytest.mark.parametrize("capture", ["fd", "no"])
 @pytest.mark.parametrize("fixture", ["capsys", "capfd", "capsysbinary", "capfdbinary"])
 def test_thread_with_capture_fixture(pytester, capture, fixture):
