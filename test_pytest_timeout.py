@@ -795,3 +795,261 @@ def test_ini_session_timeout(pytester):
     result = pytester.runpytest_subprocess()
     result.stdout.fnmatch_lines(["*!! session-timeout: 1.0 sec exceeded !!!*"])
     result.assert_outcomes(passed=1)
+
+
+def test_rerun_protocol_thread_resets_per_attempt(pytester):
+    pytester.makeconftest(
+        """
+        import time
+        from _pytest.runner import runtestprotocol
+
+        def pytest_runtest_protocol(item, nextitem):
+            for attempt in range(3):
+                item.ihook.pytest_runtest_logstart(
+                    nodeid=item.nodeid, location=item.location
+                )
+                reports = runtestprotocol(item, nextitem=nextitem, log=False)
+                failed = any(rep.failed for rep in reports)
+                if not failed or attempt == 2:
+                    for rep in reports:
+                        item.ihook.pytest_runtest_logreport(report=rep)
+                    item.ihook.pytest_runtest_logfinish(
+                        nodeid=item.nodeid, location=item.location
+                    )
+                    break
+                item.ihook.pytest_runtest_logfinish(
+                    nodeid=item.nodeid, location=item.location
+                )
+                time.sleep(0.4)
+            return True
+        """
+    )
+    pytester.makepyfile(
+        """
+        import time
+        import pytest
+
+        attempts = 0
+
+        @pytest.mark.timeout(0.8, method="thread")
+        def test_flaky():
+            global attempts
+            attempts += 1
+            time.sleep(0.3)
+            assert attempts >= 2
+        """
+    )
+    result = pytester.runpytest_subprocess()
+    assert result.ret == 0
+    result.assert_outcomes(passed=1)
+
+
+@have_sigalrm
+def test_rerun_protocol_sigalrm_rearms_each_attempt(pytester):
+    pytester.makeconftest(
+        """
+        from _pytest.runner import runtestprotocol
+
+        def pytest_runtest_protocol(item, nextitem):
+            for attempt in range(3):
+                item.ihook.pytest_runtest_logstart(
+                    nodeid=item.nodeid, location=item.location
+                )
+                reports = runtestprotocol(item, nextitem=nextitem, log=False)
+                failed = any(rep.failed for rep in reports)
+                if not failed or attempt == 2:
+                    for rep in reports:
+                        item.ihook.pytest_runtest_logreport(report=rep)
+                    item.ihook.pytest_runtest_logfinish(
+                        nodeid=item.nodeid, location=item.location
+                    )
+                    break
+                item.ihook.pytest_runtest_logfinish(
+                    nodeid=item.nodeid, location=item.location
+                )
+            return True
+        """
+    )
+    pytester.makepyfile(
+        """
+        import time
+        import pytest
+
+        attempts = 0
+
+        @pytest.mark.timeout(0.25)
+        def test_always_times_out():
+            time.sleep(1.0)
+
+        @pytest.mark.timeout(0.25)
+        def test_passes_on_retry():
+            global attempts
+            attempts += 1
+            if attempts == 1:
+                time.sleep(1.0)
+        """
+    )
+    result = pytester.runpytest_subprocess()
+    result.stdout.fnmatch_lines([MATCH_FAILURE_MESSAGE % "0.25"])
+    result.assert_outcomes(passed=1, failed=1)
+
+
+def test_rerun_protocol_timer_hooks_per_attempt(pytester):
+    pytester.makeconftest(
+        """
+        import ctypes
+        import threading
+        import pytest
+        from _pytest.runner import runtestprotocol
+
+        counts = {}
+
+        @pytest.hookimpl(tryfirst=True)
+        def pytest_timeout_set_timer(item, settings):
+            counts.setdefault(item.name, [0, 0])[0] += 1
+            target_ident = threading.current_thread().ident
+            cancelled = threading.Event()
+
+            def fire():
+                if cancelled.is_set():
+                    return
+                ctypes.pythonapi.PyThreadState_SetAsyncExc(
+                    ctypes.c_ulong(target_ident),
+                    ctypes.py_object(pytest.fail.Exception),
+                )
+
+            timer = threading.Timer(settings.timeout, fire)
+            timer.daemon = True
+
+            def cancel():
+                cancelled.set()
+                timer.cancel()
+                timer.join()
+
+            item.cancel_timeout = cancel
+            timer.start()
+            return True
+
+        @pytest.hookimpl(tryfirst=True)
+        def pytest_timeout_cancel_timer(item):
+            counts.setdefault(item.name, [0, 0])[1] += 1
+            cancel = getattr(item, "cancel_timeout", None)
+            if cancel:
+                item.cancel_timeout = None
+                cancel()
+            return True
+
+        def pytest_runtest_protocol(item, nextitem):
+            for attempt in range(3):
+                item.ihook.pytest_runtest_logstart(
+                    nodeid=item.nodeid, location=item.location
+                )
+                reports = runtestprotocol(item, nextitem=nextitem, log=False)
+                failed = any(rep.failed for rep in reports)
+                if not failed or attempt == 2:
+                    for rep in reports:
+                        item.ihook.pytest_runtest_logreport(report=rep)
+                    item.ihook.pytest_runtest_logfinish(
+                        nodeid=item.nodeid, location=item.location
+                    )
+                    break
+                item.ihook.pytest_runtest_logfinish(
+                    nodeid=item.nodeid, location=item.location
+                )
+            return True
+
+        def pytest_sessionfinish(session):
+            print()
+            for name, (sets, cancels) in sorted(counts.items()):
+                print(f"HOOK_COUNTS {name} {sets}/{cancels}")
+        """
+    )
+    pytester.makepyfile(
+        """
+        import time
+        import pytest
+
+        attempts = 0
+
+        @pytest.mark.timeout(0.2)
+        def test_always_times_out():
+            deadline = time.monotonic() + 0.7
+            while time.monotonic() < deadline:
+                time.sleep(0.02)
+
+        @pytest.mark.timeout(0.2)
+        def test_passes_after_timeout():
+            global attempts
+            attempts += 1
+            if attempts == 1:
+                deadline = time.monotonic() + 0.7
+                while time.monotonic() < deadline:
+                    time.sleep(0.02)
+        """
+    )
+    result = pytester.runpytest_subprocess("-s")
+    result.stdout.fnmatch_lines(
+        [
+            "HOOK_COUNTS test_always_times_out 3/3",
+            "HOOK_COUNTS test_passes_after_timeout 2/2",
+        ]
+    )
+    result.assert_outcomes(passed=1, failed=1)
+
+
+def test_rerunfailures_plugin(pytester):
+    pytest.importorskip("pytest_rerunfailures")
+    pytester.makepyfile(
+        """
+        import time
+        import pytest
+
+        attempts = 0
+
+        @pytest.mark.flaky(reruns=2, reruns_delay=0.4)
+        @pytest.mark.timeout(0.8, method="thread")
+        def test_flaky_with_thread_timeout():
+            global attempts
+            attempts += 1
+            time.sleep(0.3)
+            assert attempts >= 2
+        """
+    )
+    result = pytester.runpytest_subprocess()
+    assert result.ret == 0
+    result.stdout.fnmatch_lines(["*1 passed, 1 rerun*"])
+
+
+def test_cancel_timer_when_teardown_bypassed(pytester):
+    pytester.makeconftest(
+        """
+        import pytest
+
+        events = []
+
+        @pytest.hookimpl(tryfirst=True)
+        def pytest_timeout_set_timer(item, settings):
+            events.append("set")
+            return True
+
+        @pytest.hookimpl(tryfirst=True)
+        def pytest_timeout_cancel_timer(item):
+            events.append("cancel")
+            return True
+
+        def pytest_sessionfinish(session):
+            print()
+            print(f"EXIT_TIMER_EVENTS={events}")
+        """
+    )
+    pytester.makepyfile(
+        """
+        import pytest
+
+        @pytest.mark.timeout(5)
+        def test_abort():
+            pytest.exit("stop session")
+        """
+    )
+    result = pytester.runpytest_subprocess("-s")
+    result.stdout.fnmatch_lines(["EXIT_TIMER_EVENTS=['set', 'cancel']"])
