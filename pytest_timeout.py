@@ -22,6 +22,7 @@ import pytest
 __all__ = ("Settings", "is_debugging")
 SESSION_TIMEOUT_KEY = pytest.StashKey[float]()
 SESSION_EXPIRE_KEY = pytest.StashKey[float]()
+TIMER_ACTIVE_KEY = pytest.StashKey[bool]()
 PYTEST_FAILURE_MESSAGE = "Timeout (>%ss) from pytest-timeout."
 
 HAVE_SIGALRM = hasattr(signal, "SIGALRM")
@@ -174,22 +175,18 @@ def pytest_configure(config):
     config.stash[SESSION_EXPIRE_KEY] = expire_time
 
 
+def _cancel_active_timer(item):
+    """Cancel an active whole-test timeout timer on ``item``, if any."""
+    if item.stash.get(TIMER_ACTIVE_KEY, False):
+        item.stash[TIMER_ACTIVE_KEY] = False
+        item.config.pluginmanager.hook.pytest_timeout_cancel_timer(item=item)
+
+
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_protocol(item):
-    """Hook in timeouts to the runtest protocol.
-
-    If the timeout is set on the entire test, including setup and
-    teardown, then this hook installs the timeout. Otherwise
-    pytest_runtest_call is used.
-    """
-    hooks = item.config.pluginmanager.hook
-    settings = _get_item_settings(item)
-    is_timeout = settings.timeout is not None and settings.timeout > 0
-    if is_timeout and settings.func_only is False:
-        hooks.pytest_timeout_set_timer(item=item, settings=settings)
+    """Ensure any active timeout is cancelled and check session timeout."""
     yield
-    if is_timeout and settings.func_only is False:
-        hooks.pytest_timeout_cancel_timer(item=item)
+    _cancel_active_timer(item)
 
     #  check session timeout
     expire_time = item.session.config.stash[SESSION_EXPIRE_KEY]
@@ -198,12 +195,31 @@ def pytest_runtest_protocol(item):
         item.session.shouldfail = f"session-timeout: {timeout} sec exceeded"
 
 
+@pytest.hookimpl(hookwrapper=True, tryfirst=True)
+def pytest_runtest_setup(item):
+    """Hook in timeouts before test setup when func_only is False.
+
+    Installing the timeout on setup/teardown instead of pytest_runtest_protocol
+    ensures each attempt gets its own timeout when a plugin such as
+    pytest-rerunfailures re-runs setup/call/teardown inside pytest_runtest_protocol.
+    """
+    hooks = item.config.pluginmanager.hook
+    settings = _get_item_settings(item)
+    is_timeout = settings.timeout is not None and settings.timeout > 0
+    if is_timeout and settings.func_only is False:
+        _cancel_active_timer(item)
+        hooks.pytest_timeout_set_timer(item=item, settings=settings)
+        item.stash[TIMER_ACTIVE_KEY] = True
+    yield
+
+
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_call(item):
     """Hook in timeouts to the test function call only.
 
     If the timeout is set on only the test function this hook installs
-    the timeout, otherwise pytest_runtest_protocol is used.
+    the timeout, otherwise pytest_runtest_setup and pytest_runtest_teardown
+    are used.
     """
     hooks = item.config.pluginmanager.hook
     settings = _get_item_settings(item)
@@ -213,6 +229,13 @@ def pytest_runtest_call(item):
     yield
     if is_timeout and settings.func_only is True:
         hooks.pytest_timeout_cancel_timer(item=item)
+
+
+@pytest.hookimpl(hookwrapper=True, tryfirst=True)
+def pytest_runtest_teardown(item):
+    """Cancel whole-test timeout after fixture teardowns complete."""
+    yield
+    _cancel_active_timer(item)
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -336,6 +359,7 @@ def pytest_timeout_cancel_timer(item):
     # called.
     cancel = getattr(item, "cancel_timeout", None)
     if cancel:
+        item.cancel_timeout = None
         cancel()
     return True
 
