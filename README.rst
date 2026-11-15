@@ -36,6 +36,16 @@ time. This is useful when running tests under a continuous
 integration server or simply if you don't know why the test suite
 hangs.
 
+When asyncio is in use, timeout output also includes pending tasks and
+their suspended coroutine await chains, including tasks in event loops
+running in background threads. This works with both timeout methods
+without additional configuration. Task inspection runs without asking
+the event loops to execute callbacks, so it can also diagnose a blocked
+event loop. Inspection is best effort because tasks may advance while
+their stacks are collected. Frame locals are not included. Task types
+that do not derive from ``asyncio.Task`` and other async runtimes are
+not supported.
+
 .. note::
 
    While by default on POSIX systems pytest will continue to execute
@@ -395,6 +405,8 @@ Changelog
 X.Y.Z
 -----
 
+- Include pending asyncio tasks and suspended coroutine await chains in
+  timeout output for both the signal and thread methods.
 - Preserve capture-fixture output and disable fixture capturing when reporting
   thread timeouts. Thanks Arham Begani.
 - Add support Python3.15. Thanks Vladimir Roshchin.
