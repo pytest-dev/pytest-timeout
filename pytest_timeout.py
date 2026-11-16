@@ -18,6 +18,7 @@ from collections import namedtuple
 from contextlib import ExitStack
 
 import pytest
+from _pytest._io import TerminalWriter
 
 __all__ = ("Settings", "is_debugging")
 SESSION_TIMEOUT_KEY = pytest.StashKey[float]()
@@ -508,7 +509,7 @@ def timeout_timer(item, settings):
     """
     if not settings.disable_debugger_detection and is_debugging():
         return
-    terminal = item.config.get_terminal_writer()
+    terminal = None
     with ExitStack() as stack:
         try:
             capman = item.config.pluginmanager.getplugin("capturemanager")
@@ -520,6 +521,10 @@ def timeout_timer(item, settings):
                 stdout, stderr = capman.read_global_capture()
             else:
                 stdout, stderr = None, None
+            if item.config.pluginmanager.hasplugin("terminalreporter"):
+                terminal = item.config.get_terminal_writer()
+            else:
+                terminal = TerminalWriter(file=sys.stderr)
             terminal.sep("+", title="Timeout")
             caplog = item.config.pluginmanager.getplugin("_capturelog")
             if caplog and hasattr(item, "capturelog_handler"):
@@ -538,7 +543,8 @@ def timeout_timer(item, settings):
         except Exception:
             traceback.print_exc()
         finally:
-            terminal.flush()
+            if terminal is not None:
+                terminal.flush()
             sys.stdout.flush()
             sys.stderr.flush()
             os._exit(1)

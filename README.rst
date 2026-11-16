@@ -395,6 +395,8 @@ Changelog
 X.Y.Z
 -----
 
+- Keep thread timeouts effective and report diagnostics to stderr when the
+  terminal plugin is disabled.
 - Preserve capture-fixture output and disable fixture capturing when reporting
   thread timeouts. Thanks Arham Begani.
 - Add support Python3.15. Thanks Vladimir Roshchin.

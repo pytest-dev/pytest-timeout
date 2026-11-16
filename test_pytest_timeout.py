@@ -119,6 +119,49 @@ def test_thread_without_capture_plugin(pytester):
     result.stdout.fnmatch_lines(["*++ Timeout ++*", "*~~ Stack of MainThread* ~~*"])
 
 
+@pytest.mark.parametrize(
+    "capture_args",
+    [
+        ["--capture=fd"],
+        ["--capture=sys"],
+        ["--capture=tee-sys"],
+        ["--capture=no"],
+        ["-p", "no:capture"],
+    ],
+    ids=["fd", "sys", "tee-sys", "no", "no-capture-plugin"],
+)
+def test_thread_without_terminal_plugin(pytester, capture_args):
+    pytester.makepyfile(
+        """
+        import sys
+        import time
+
+        def test_foo():
+            print("BEFORE TIMEOUT STDOUT", flush=True)
+            print("BEFORE TIMEOUT STDERR", file=sys.stderr, flush=True)
+            time.sleep(2)
+            print("TEST COMPLETED", flush=True)
+        """
+    )
+
+    result = pytester.runpytest_subprocess(
+        "--timeout=1",
+        "--timeout-method=thread",
+        "-p",
+        "no:terminal",
+        *capture_args,
+        timeout=20,
+    )
+
+    assert result.ret == 1
+    output = result.stdout.lines + result.stderr.lines
+    assert any(line.endswith("BEFORE TIMEOUT STDOUT") for line in output)
+    assert any(line.endswith("BEFORE TIMEOUT STDERR") for line in output)
+    assert "TEST COMPLETED" not in output
+    result.stderr.fnmatch_lines(["*++ Timeout ++*", "*~~ Stack of MainThread* ~~*"])
+    assert "++ Timeout ++" in result.stderr.lines[-1]
+
+
 def test_cov(pytester):
     # This test requires pytest-cov
     pytest.importorskip("pytest_cov")
