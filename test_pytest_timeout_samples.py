@@ -8,7 +8,16 @@ import pytest_timeout
 pytest_plugins = "pytester"
 
 
-def test_sample_thread_stacks(pytester):
+@pytest.fixture
+def sample_dir(monkeypatch, tmp_path):
+    system_temp = tmp_path / "system-temp"
+    system_temp.mkdir()
+    for name in ("TMPDIR", "TEMP", "TMP"):
+        monkeypatch.setenv(name, str(system_temp))
+    return system_temp / "pytest-timeout"
+
+
+def test_sample_thread_stacks(pytester, sample_dir):
     pytester.makepyfile(
         """
         import threading
@@ -48,9 +57,11 @@ def test_sample_thread_stacks(pytester):
 
     result.assert_outcomes(passed=1)
     result.stdout.fnmatch_lines(
-        ["slow test sample: 0.2s", "slow test sample directory: *"]
+        ["slow test sample: 0.2s", f"slow test sample directory: {sample_dir}"]
     )
-    artifacts = list((pytester.path / "slow_test_samples").glob("*.log"))
+    assert not (pytester.path / "slow_test_samples").exists()
+    assert not (pytester.path / "pytest-timeout").exists()
+    artifacts = list(sample_dir.glob("*.log"))
     assert len(artifacts) == 1
     assert "test_slow" in artifacts[0].name
     snapshot = artifacts[0].read_text(encoding="utf-8")
@@ -111,7 +122,7 @@ def test_sample_directory_override(pytester):
 
 @pytest.mark.parametrize("outcome", ["pass", "skip", "fail"])
 @pytest.mark.parametrize("func_only", [False, True])
-def test_sample_cancels_between_tests(pytester, outcome, func_only):
+def test_sample_cancels_between_tests(pytester, sample_dir, outcome, func_only):
     pytester.makeini(f"[pytest]\ntimeout_func_only = {func_only}")
     action = {
         "pass": "pass",
@@ -138,7 +149,7 @@ def test_sample_cancels_between_tests(pytester, outcome, func_only):
         skipped=int(outcome == "skip"),
         failed=int(outcome == "fail"),
     )
-    artifacts = list((pytester.path / "slow_test_samples").glob("*.log"))
+    artifacts = list(sample_dir.glob("*.log"))
     assert len(artifacts) == 1
     assert "test_slow" in artifacts[0].name
 
@@ -152,7 +163,7 @@ def test_sample_cancels_between_tests(pytester, outcome, func_only):
         (True, "@pytest.mark.timeout(func_only=False)", True),
     ],
 )
-def test_sample_fixture_scope(pytester, func_only, marker, sampled):
+def test_sample_fixture_scope(pytester, sample_dir, func_only, marker, sampled):
     pytester.makeini(f"[pytest]\ntimeout_func_only = {func_only}")
     pytester.makepyfile(
         f"""
@@ -174,7 +185,7 @@ def test_sample_fixture_scope(pytester, func_only, marker, sampled):
     result = pytester.runpytest_subprocess("--slow-test-sample=0.05")
 
     result.assert_outcomes(passed=1)
-    artifacts = list((pytester.path / "slow_test_samples").glob("*.log"))
+    artifacts = list(sample_dir.glob("*.log"))
     assert len(artifacts) == int(sampled)
 
 
@@ -190,7 +201,7 @@ def test_sample_fixture_scope(pytester, func_only, marker, sampled):
         ),
     ],
 )
-def test_sample_before_hard_timeout(pytester, method):
+def test_sample_before_hard_timeout(pytester, sample_dir, method):
     pytester.makepyfile("import time\ndef test_hang(): time.sleep(10)")
 
     result = pytester.runpytest_subprocess(
@@ -198,7 +209,7 @@ def test_sample_before_hard_timeout(pytester, method):
     )
 
     assert result.ret == 1
-    artifacts = list((pytester.path / "slow_test_samples").glob("*.log"))
+    artifacts = list(sample_dir.glob("*.log"))
     assert len(artifacts) == 1
     snapshot = artifacts[0].read_text(encoding="utf-8")
     assert "in test_hang" in snapshot
@@ -282,7 +293,7 @@ def test_sample_reuses_timeout_stack_dumper(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("fixture", ["capsys", "capfd", "capsysbinary", "capfdbinary"])
-def test_sample_preserves_capture_fixtures(pytester, fixture):
+def test_sample_preserves_capture_fixtures(pytester, sample_dir, fixture):
     expected = (
         'b"BEFORE\\nAFTER\\n"' if fixture.endswith("binary") else '"BEFORE\\nAFTER\\n"'
     )
@@ -301,7 +312,7 @@ def test_sample_preserves_capture_fixtures(pytester, fixture):
     result = pytester.runpytest_subprocess("--slow-test-sample=0.05")
 
     result.assert_outcomes(passed=1)
-    assert len(list((pytester.path / "slow_test_samples").glob("*.log"))) == 1
+    assert len(list(sample_dir.glob("*.log"))) == 1
 
 
 def test_sample_cancellation_waits_for_running_callback():

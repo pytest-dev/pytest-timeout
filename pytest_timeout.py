@@ -60,7 +60,10 @@ SAMPLE_DESC = """
 Seconds before writing a non-fatal sample of the timeout stack diagnostics.
 Default is 0 which disables sampling independently of the timeout.
 """.strip()
-SAMPLE_DIR_DESC = "Directory for slow-test stack samples. Default is slow_test_samples."
+SAMPLE_DIR_DESC = """
+Directory for slow-test stack samples. Default is pytest-timeout under the
+system temporary directory.
+""".strip()
 
 # bdb covers pdb, ipdb, and possibly others
 # pydevd covers PyCharm, VSCode, and possibly others
@@ -122,7 +125,11 @@ def pytest_addoption(parser):
     )
     parser.addini("session_timeout", SESSION_TIMEOUT_DESC, type="float")
     parser.addini("slow_test_sample", SAMPLE_DESC, type="float", default=0)
-    parser.addini("slow_test_sample_dir", SAMPLE_DIR_DESC, default="slow_test_samples")
+    parser.addini(
+        "slow_test_sample_dir",
+        SAMPLE_DIR_DESC,
+        default=str(Path(tempfile.gettempdir()) / "pytest-timeout"),
+    )
 
 
 class TimeoutHooks:

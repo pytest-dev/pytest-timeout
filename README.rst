@@ -121,9 +121,11 @@ a sample after 15 seconds and interrupt the test after 60 seconds::
 
    pytest --slow-test-sample=15 --timeout=60
 
-Each slow test writes one UTF-8 ``.log`` file to ``slow_test_samples``
-relative to the working directory. ``--slow-test-sample-dir=PATH`` selects
-another directory. The filename contains a sanitized test name and a
+Each slow test writes one UTF-8 ``.log`` file to a ``pytest-timeout``
+subdirectory of the system temporary directory, such as
+``/tmp/pytest-timeout/`` on Linux. ``--slow-test-sample-dir=PATH`` selects
+another directory; relative paths are resolved from the working directory.
+The filename contains a sanitized test name and a
 unique suffix, and the file includes the complete test node ID and
 sampling threshold. Repeated tests and parallel workers do not overwrite
 each other's samples.
@@ -140,7 +142,7 @@ Both settings are available in the pytest configuration file:
 
    [pytest]
    slow_test_sample = 15
-   slow_test_sample_dir = logs/slow_test_samples
+   slow_test_sample_dir = /tmp/custom-test-samples
 
 Command-line values override the configuration file.
 ``--slow-test-sample=0`` disables sampling, while ``--timeout=0`` disables
