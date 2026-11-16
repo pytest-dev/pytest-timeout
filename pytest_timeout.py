@@ -8,20 +8,27 @@ the test, otherwise os._exit(1) is used.
 """
 
 import inspect
+import math
 import os
+import re
 import signal
 import sys
+import tempfile
 import threading
 import time
 import traceback
 from collections import namedtuple
 from contextlib import ExitStack
+from pathlib import Path
 
 import pytest
+from _pytest._io import TerminalWriter
 
 __all__ = ("Settings", "is_debugging")
 SESSION_TIMEOUT_KEY = pytest.StashKey[float]()
 SESSION_EXPIRE_KEY = pytest.StashKey[float]()
+SAMPLE_SECONDS_KEY = pytest.StashKey[float]()
+SAMPLE_DIR_KEY = pytest.StashKey[Path]()
 PYTEST_FAILURE_MESSAGE = "Timeout (>%ss) from pytest-timeout."
 
 HAVE_SIGALRM = hasattr(signal, "SIGALRM")
@@ -49,6 +56,14 @@ Timeout in seconds for entire session.  Default is None which
 means no timeout. Timeout is checked between tests, and will not interrupt a test
 in progress.
 """.strip()
+SAMPLE_DESC = """
+Seconds before writing a non-fatal sample of the timeout stack diagnostics.
+Default is 0 which disables sampling independently of the timeout.
+""".strip()
+SAMPLE_DIR_DESC = """
+Directory for slow-test stack samples. Default is pytest-timeout under the
+system temporary directory.
+""".strip()
 
 # bdb covers pdb, ipdb, and possibly others
 # pydevd covers PyCharm, VSCode, and possibly others
@@ -66,6 +81,10 @@ def pytest_addoption(parser):
         "Interrupt test run and dump stacks of all threads after a test times out",
     )
     group.addoption("--timeout", type=float, help=TIMEOUT_DESC)
+    group.addoption(
+        "--slow-test-sample", type=float, metavar="SECONDS", help=SAMPLE_DESC
+    )
+    group.addoption("--slow-test-sample-dir", metavar="PATH", help=SAMPLE_DIR_DESC)
     group.addoption(
         "--timeout_method",
         action="store",
@@ -105,6 +124,12 @@ def pytest_addoption(parser):
         default=False,
     )
     parser.addini("session_timeout", SESSION_TIMEOUT_DESC, type="float")
+    parser.addini("slow_test_sample", SAMPLE_DESC, type="float", default=0)
+    parser.addini(
+        "slow_test_sample_dir",
+        SAMPLE_DIR_DESC,
+        default=str(Path(tempfile.gettempdir()) / "pytest-timeout"),
+    )
 
 
 class TimeoutHooks:
@@ -160,6 +185,19 @@ def pytest_configure(config):
     config._env_timeout_func_only = settings.func_only
     config._env_timeout_disable_debugger_detection = settings.disable_debugger_detection
 
+    sample_seconds = config.getoption("slow_test_sample")
+    if sample_seconds is None:
+        sample_seconds = config.getini("slow_test_sample")
+    if not math.isfinite(sample_seconds) or sample_seconds < 0:
+        raise pytest.UsageError(
+            "slow_test_sample must be a finite, non-negative number"
+        )
+    config.stash[SAMPLE_SECONDS_KEY] = sample_seconds
+    config.stash[SAMPLE_DIR_KEY] = Path(
+        config.getoption("slow_test_sample_dir")
+        or config.getini("slow_test_sample_dir")
+    ).absolute()
+
     timeout = config.getoption("session_timeout")
     if timeout is None:
         ini = config.getini("session_timeout")
@@ -185,11 +223,19 @@ def pytest_runtest_protocol(item):
     hooks = item.config.pluginmanager.hook
     settings = _get_item_settings(item)
     is_timeout = settings.timeout is not None and settings.timeout > 0
-    if is_timeout and settings.func_only is False:
-        hooks.pytest_timeout_set_timer(item=item, settings=settings)
-    yield
-    if is_timeout and settings.func_only is False:
-        hooks.pytest_timeout_cancel_timer(item=item)
+    sample_timer = None
+    try:
+        if settings.func_only is False:
+            sample_timer = _start_sample_timer(item, settings)
+            if is_timeout:
+                hooks.pytest_timeout_set_timer(item=item, settings=settings)
+        yield
+    finally:
+        try:
+            if is_timeout and settings.func_only is False:
+                hooks.pytest_timeout_cancel_timer(item=item)
+        finally:
+            _cancel_sample_timer(sample_timer)
 
     #  check session timeout
     expire_time = item.session.config.stash[SESSION_EXPIRE_KEY]
@@ -208,11 +254,19 @@ def pytest_runtest_call(item):
     hooks = item.config.pluginmanager.hook
     settings = _get_item_settings(item)
     is_timeout = settings.timeout is not None and settings.timeout > 0
-    if is_timeout and settings.func_only is True:
-        hooks.pytest_timeout_set_timer(item=item, settings=settings)
-    yield
-    if is_timeout and settings.func_only is True:
-        hooks.pytest_timeout_cancel_timer(item=item)
+    sample_timer = None
+    try:
+        if settings.func_only is True:
+            sample_timer = _start_sample_timer(item, settings)
+            if is_timeout:
+                hooks.pytest_timeout_set_timer(item=item, settings=settings)
+        yield
+    finally:
+        try:
+            if is_timeout and settings.func_only is True:
+                hooks.pytest_timeout_cancel_timer(item=item)
+        finally:
+            _cancel_sample_timer(sample_timer)
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -230,6 +284,12 @@ def pytest_report_header(config):
     session_timeout = config.getoption("session_timeout")
     if session_timeout:
         timeout_header.append(f"session timeout: {session_timeout}s")
+    sample_seconds = config.stash[SAMPLE_SECONDS_KEY]
+    if sample_seconds:
+        timeout_header.append(
+            f"slow test sample: {sample_seconds}s\n"
+            f"slow test sample directory: {config.stash[SAMPLE_DIR_KEY]}"
+        )
     if timeout_header:
         return timeout_header
     return None
@@ -542,6 +602,61 @@ def timeout_timer(item, settings):
             sys.stdout.flush()
             sys.stderr.flush()
             os._exit(1)
+
+
+def _start_sample_timer(item, settings):
+    """Start an independent, one-shot diagnostic timer, if enabled."""
+    seconds = item.config.stash[SAMPLE_SECONDS_KEY]
+    if not seconds:
+        return None
+    timer = threading.Timer(
+        seconds,
+        _sample_stacks,
+        (item.nodeid, seconds, item.config.stash[SAMPLE_DIR_KEY], settings),
+    )
+    timer.name = f"{__name__} sample {item.nodeid}"
+    timer.daemon = True
+    timer.start()
+    return timer
+
+
+def _cancel_sample_timer(timer):
+    if timer is not None:
+        timer.cancel()
+        # Finish any in-progress write before advancing to another test.
+        timer.join()
+
+
+def _sample_stacks(nodeid, seconds, directory, settings):
+    """Write the normal timeout diagnostics without interrupting the test."""
+    if not settings.disable_debugger_detection and is_debugging():
+        return
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        path, separator, test = nodeid.partition("::")
+        name = re.sub(
+            r"[^A-Za-z0-9_.-]", "_", path.rsplit("/", 1)[-1] + separator + test
+        )[:120]
+        # Unique suffixes prevent overwrites across parametrizations, repeated
+        # runs and parallel workers; bounded names remain portable.
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            prefix=f"{name}-",
+            suffix=".log",
+            dir=directory,
+            delete=False,
+        ) as stream:
+            terminal = TerminalWriter(file=stream)
+            terminal.sep("+", title=f"Slow test sample after {seconds}s")
+            terminal.line(f"Test: {nodeid}")
+            dump_stacks(terminal)
+            terminal.sep("+", title="Slow test sample")
+    except Exception:
+        # A failed sample must not cause an unhandled timer exception or fail
+        # the test. Leave the independent hard timeout in control.
+        sys.stderr.write(f"pytest-timeout: could not write stack sample for {nodeid}\n")
+        traceback.print_exc()
 
 
 def dump_stacks(terminal):

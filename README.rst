@@ -111,6 +111,47 @@ Setting a timeout to 0 seconds disables the timeout, so if you have a
 global timeout set you can still disable the timeout by using the
 mark.
 
+Slow-test samples
+=================
+
+Use ``--slow-test-sample=SECONDS`` to collect a non-fatal stack sample when
+a test runs longer than a separate threshold. Sampling is disabled by
+default and works independently of the hard timeout. For example, write
+a sample after 15 seconds and interrupt the test after 60 seconds::
+
+   pytest --slow-test-sample=15 --timeout=60
+
+Each slow test writes one UTF-8 ``.log`` file to a ``pytest-timeout``
+subdirectory of the system temporary directory, such as
+``/tmp/pytest-timeout/`` on Linux. ``--slow-test-sample-dir=PATH`` selects
+another directory; relative paths are resolved from the working directory.
+The filename contains a sanitized test name and a
+unique suffix, and the file includes the complete test node ID and
+sampling threshold. Repeated tests and parallel workers do not overwrite
+each other's samples.
+
+Samples reuse the same thread stack dumper as timeout output. They are
+written directly to files without changing pytest's output capture or
+interrupting the test. Sampling includes setup and teardown unless
+``timeout_func_only`` or the timeout marker's ``func_only`` option is
+enabled. Sampling also respects debugger detection and its disable setting.
+
+Both settings are available in the pytest configuration file:
+
+.. code:: ini
+
+   [pytest]
+   slow_test_sample = 15
+   slow_test_sample_dir = /tmp/custom-test-samples
+
+Command-line values override the configuration file.
+``--slow-test-sample=0`` disables sampling, while ``--timeout=0`` disables
+only the hard timeout. A sample is taken once per slow test. Timers are
+cancelled at test completion, and any in-progress sample finishes before
+the next test starts. Output errors are reported to stderr without
+failing the test. Set the sampling threshold earlier than a hard timeout
+to allow the file to be written before the test or process is interrupted.
+
 Timeout Methods
 ===============
 
@@ -395,6 +436,8 @@ Changelog
 X.Y.Z
 -----
 
+- Add non-fatal slow-test stack samples using ``--slow-test-sample`` and
+  ``--slow-test-sample-dir``, reusing the timeout diagnostics.
 - Preserve capture-fixture output and disable fixture capturing when reporting
   thread timeouts. Thanks Arham Begani.
 - Add support Python3.15. Thanks Vladimir Roshchin.
