@@ -31,6 +31,7 @@ def test_timeout_suspended_asyncio_chains_across_threads(
     pytester.makepyfile(
         f"""
         import asyncio
+        import gc
         import threading
         import time
         import types
@@ -58,12 +59,15 @@ def test_timeout_suspended_asyncio_chains_across_threads(
             await foreground_leaf()
 
         async def main():
-            asyncio.create_task(foreground_root(), name="foreground-worker")
+            # Keep the task alive while collecting suspended reference cycles.
+            foreground_task = asyncio.create_task(
+                foreground_root(), name="foreground-worker"
+            )
             await asyncio.sleep(0)
+            gc.collect()
             if {blocked_loop}:
                 time.sleep(10)
-            else:
-                await asyncio.Event().wait()
+            await foreground_task
 
         def test_hang():
             thread = threading.Thread(
