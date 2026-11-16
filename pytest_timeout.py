@@ -7,6 +7,7 @@ If the platform supports SIGALRM this is used to raise an exception in
 the test, otherwise os._exit(1) is used.
 """
 
+import gc
 import inspect
 import os
 import signal
@@ -545,7 +546,7 @@ def timeout_timer(item, settings):
 
 
 def dump_stacks(terminal):
-    """Dump the stacks of all threads except the current thread."""
+    """Dump other threads' stacks and pending asyncio coroutine chains."""
     current_ident = threading.current_thread().ident
     for thread_ident, frame in sys._current_frames().items():
         if thread_ident == current_ident:
@@ -558,3 +559,62 @@ def dump_stacks(terminal):
             thread_name = "<unknown>"
         terminal.sep("~", title=f"Stack of {thread_name} ({thread_ident})")
         terminal.write("".join(traceback.format_stack(frame)))
+    _dump_asyncio_stacks(terminal)
+
+
+def _dump_asyncio_stacks(terminal):
+    """Inspect tasks across event loops without needing those loops to respond."""
+    # Avoid importing asyncio in test runs that do not use it.
+    asyncio = sys.modules.get("asyncio")
+    if asyncio is None or not hasattr(asyncio, "Task"):
+        return
+    try:
+        # Discover tasks in all threads without a private task registry. Check
+        # the real type to avoid invoking arbitrary __class__ properties.
+        tasks = [obj for obj in gc.get_objects() if issubclass(type(obj), asyncio.Task)]
+        tasks = [task for task in tasks if not task.done()]
+        if not tasks:
+            return
+        terminal.sep("~", title="Asyncio task stacks")
+        for task in tasks:
+            try:
+                terminal.write(
+                    f"\nTask: {task.get_name()} (loop {id(task.get_loop()):#x})\n"
+                )
+                _dump_await_chain(task.get_coro(), terminal)
+            except Exception:  # noqa: PERF203
+                # Preserve other tasks' stacks if one task changes or cannot
+                # be inspected while the test is still running.
+                terminal.write(traceback.format_exc())
+    except Exception:
+        # Task discovery is best effort; diagnostic errors must not replace
+        # the original timeout failure.
+        terminal.write("Unable to collect asyncio task stacks:\n")
+        terminal.write(traceback.format_exc())
+
+
+def _dump_await_chain(current, terminal):
+    seen = set()
+    for _ in range(50):
+        if current is None:
+            return
+        if id(current) in seen:
+            terminal.write("  <cycle in coroutine chain>\n")
+            return
+        seen.add(id(current))
+        frame = (
+            getattr(current, "cr_frame", None)
+            or getattr(current, "gi_frame", None)
+            or getattr(current, "ag_frame", None)
+        )
+        if frame is not None:
+            terminal.write("".join(traceback.format_stack(frame, limit=1)))
+        else:
+            terminal.write(f"  <{type(current).__name__}>\n")
+        current = (
+            getattr(current, "cr_await", None)
+            or getattr(current, "gi_yieldfrom", None)
+            or getattr(current, "ag_await", None)
+        )
+    if current is not None:
+        terminal.write("  <coroutine chain truncated after 50 frames>\n")
